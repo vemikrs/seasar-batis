@@ -11,13 +11,14 @@ repositories {
 dependencies {
     // Use JUnit Jupiter for testing.
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.11.0'
+    testImplementation 'org.mockito:mockito-junit-jupiter:5.3.1'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.11.0'
 
     // Mockito for mocking in tests.
     testImplementation 'org.mockito:mockito-core:5.2.0'
 
     // This dependency is exported to consumers, that is to say found on their compile classpath.
-    api 'org.mybatis:mybatis:3.5.11'
+    api 'org.mybatis:mybatis:3.5.13'
     api 'org.mybatis:mybatis-spring:3.0.2'
 
     // This dependency is used internally, and not exposed to consumers on their own compile classpath.
