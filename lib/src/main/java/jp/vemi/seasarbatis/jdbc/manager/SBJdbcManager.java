@@ -77,6 +77,7 @@ public class SBJdbcManager {
         return queryExecutor.execute(sql, params, "DELETE");
     }
 
+    // SQLファイル実行
     /**
      * SQLファイルに基づいて検索を実行します。
      * 
@@ -110,6 +111,7 @@ public class SBJdbcManager {
         return queryExecutor.executeFile(sqlFile, params, "DELETE");
     }
 
+    // エンティティクラス操作
     /**
      * 主キーに基づいてエンティティを検索します。
      * 
