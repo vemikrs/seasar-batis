@@ -1,7 +1,7 @@
 /*
  * Copyright(c) 2025 VEMIDaS, All rights reserved.
  */
-package jp.vemi.seasarbatis;
+package jp.vemi.seasarbatis.sql.executor;
 
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.apache.ibatis.session.SqlSession;
@@ -11,6 +11,8 @@ import java.util.HashMap;
 import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import jp.vemi.seasarbatis.sql.builder.SBQueryBuilder;
 
 /**
  * SQLクエリを実行するための実行クラス。

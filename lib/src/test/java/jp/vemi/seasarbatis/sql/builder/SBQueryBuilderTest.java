@@ -1,7 +1,8 @@
-package jp.vemi.seasarbatis;
+package jp.vemi.seasarbatis.sql.builder;
 
 import static org.junit.jupiter.api.Assertions.*;
 import org.junit.jupiter.api.Test;
+
 import java.io.IOException;
 import java.sql.Date;
 import java.util.HashMap;

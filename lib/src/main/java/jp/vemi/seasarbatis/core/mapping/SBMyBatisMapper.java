@@ -1,13 +1,15 @@
 /*
  * Copyright(c) 2025 VEMIDaS, All rights reserved.
  */
-package jp.vemi.seasarbatis;
+package jp.vemi.seasarbatis.core.mapping;
 
 import java.io.IOException;
 import java.util.Map;
 
 import org.apache.ibatis.session.SqlSession;
 import org.apache.ibatis.session.SqlSessionFactory;
+
+import jp.vemi.seasarbatis.sql.builder.SBQueryBuilder;
 
 /**
  * MyBatisのマッパーインターフェースを管理するジェネリッククラス。
