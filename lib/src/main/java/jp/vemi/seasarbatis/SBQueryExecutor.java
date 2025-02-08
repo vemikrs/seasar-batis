@@ -7,108 +7,107 @@ import org.apache.ibatis.session.SqlSessionFactory;
 import org.apache.ibatis.session.SqlSession;
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
+import java.io.IOException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * SQLクエリを実行するための実行クラス。
- * MyBatisのSQLSessionを使用してCRUD操作を提供します。
- * 
- * <p>このクラスは以下の機能を提供します：
- * <ul>
- *   <li>SELECT文の実行（リスト形式での結果取得）</li>
- *   <li>INSERT文の実行（影響行数の取得）</li>
- *   <li>UPDATE文の実行（影響行数の取得）</li>
- *   <li>DELETE文の実行（影響行数の取得）</li>
- * </ul>
+ * MyBatisのSQLSessionを使用してデータベース操作を提供します。
  */
 public class SBQueryExecutor {
+    private static final Logger logger = LoggerFactory.getLogger(SBQueryExecutor.class);
     private final SqlSessionFactory sqlSessionFactory;
 
-    /**
-     * QueryExecutorを初期化します。
-     *
-     * @param sqlSessionFactory MyBatisのSQLSessionFactory
-     */
     public SBQueryExecutor(SqlSessionFactory sqlSessionFactory) {
         this.sqlSessionFactory = sqlSessionFactory;
     }
 
     /**
-     * SELECT文を実行し、結果をリストで取得します。
-     *
-     * @param <T> 戻り値の要素型
-     * @param sql 実行するSQL文
-     * @param parameters バインドパラメータ
-     * @return 検索結果のリスト
+     * SQLファイルから実行
      */
-    public <T> List<T> executeSelect(String sql, Map<String, Object> parameters) {
-        try (SqlSession session = sqlSessionFactory.openSession()) {
-            return session.selectList("dynamicSQL", parameters);
+    public <T> T executeFile(String sqlFile, Map<String, Object> parameters, String commandType) {
+        try {
+            String sql = SBQueryBuilder.loadSQLFromFile(sqlFile);
+            return executeInternal(sql, parameters, commandType);
+        } catch (IOException e) {
+            logger.error("SQLファイル読み込みエラー: {}", e.getMessage(), e);
+            throw new RuntimeException("SQLファイルの読み込みに失敗しました: " + sqlFile, e);
         }
     }
 
     /**
-     * UPDATE文を実行します。
-     * トランザクション制御（コミット/ロールバック）を自動的に行います。
-     *
-     * @param sql 実行するSQL文
-     * @param parameters バインドパラメータ
-     * @return 更新された行数
-     * @throws RuntimeException SQL実行時にエラーが発生した場合
+     * SQL文字列から直接実行
      */
-    public int executeUpdate(String sql, Map<String, Object> parameters) {
+    public <T> T execute(String sql, Map<String, Object> parameters, String commandType) {
+        return executeInternal(sql, parameters, commandType);
+    }
+
+    @SuppressWarnings("unchecked")
+    private <T> T executeInternal(String sql, Map<String, Object> parameters, String commandType) {
+        String processedSql = SBQueryBuilder.processSQL(sql, parameters);
+        logger.debug("Executing {} SQL: {}", commandType, processedSql);
+
         try (SqlSession session = sqlSessionFactory.openSession(false)) {
-            int result = session.update("dynamicSQL", parameters);
-            session.commit();
-            return result;
+            // PreparedStatementを使用するようにマッピング
+            Map<String, Object> params = new HashMap<>(parameters);
+            params.put("_sql", processedSql);
+            
+            Object result = null;
+            String statement = "prepared" + commandType;  // preparedSELECT など
+
+            switch (commandType) {
+                case "SELECT":
+                    result = session.selectList(statement, params);
+                    break;
+                case "INSERT":
+                    result = session.insert(statement, params);
+                    break;
+                case "UPDATE":
+                    result = session.update(statement, params);
+                    break;
+                case "DELETE":
+                    result = session.delete(statement, params);
+                    break;
+                default:
+                    throw new IllegalArgumentException("不正なSQLコマンドタイプ: " + commandType);
+            }
+
+            if (!"SELECT".equals(commandType)) {
+                session.commit();
+                logger.info("{} affected {} rows", commandType, result);
+            }
+
+            return (T) result;
         } catch (Exception e) {
+            logger.error("SQL実行エラー: {}", e.getMessage(), e);
             try (SqlSession session = sqlSessionFactory.openSession()) {
                 session.rollback();
+                logger.warn("トランザクションをロールバックしました");
             }
-            throw e;
+            throw new RuntimeException("SQL実行中にエラーが発生しました", e);
         }
     }
 
     /**
-     * INSERT文を実行します。
-     * トランザクション制御（コミット/ロールバック）を自動的に行います。
-     *
-     * @param sql 実行するSQL文
+     * SQLを実行し、結果を取得します。
+     * @param <T> 戻り値の型
+     * @param sql SQL文
      * @param parameters バインドパラメータ
-     * @return 挿入された行数
-     * @throws RuntimeException SQL実行時にエラーが発生した場合
+     * @return  実行結果
      */
-    public int executeInsert(String sql, Map<String, Object> parameters) {
-        try (SqlSession session = sqlSessionFactory.openSession(false)) {
-            int result = session.insert("dynamicSQL", parameters);
-            session.commit();
-            return result;
-        } catch (Exception e) {
-            try (SqlSession session = sqlSessionFactory.openSession()) {
-                session.rollback();
-            }
-            throw e;
-        }
+    public <T> List<T> select(String sql, Map<String, Object> parameters) {
+        return execute(sql, parameters, "SELECT");
     }
 
     /**
-     * DELETE文を実行します。
-     * トランザクション制御（コミット/ロールバック）を自動的に行います。
-     *
-     * @param sql 実行するSQL文
+     * SQLを実行し、結果を取得します。
+     * @param sql SQL文
      * @param parameters バインドパラメータ
-     * @return 削除された行数
-     * @throws RuntimeException SQL実行時にエラーが発生した場合
+     * @return 実行結果
      */
-    public int executeDelete(String sql, Map<String, Object> parameters) {
-        try (SqlSession session = sqlSessionFactory.openSession(false)) {
-            int result = session.delete("dynamicSQL", parameters);
-            session.commit();
-            return result;
-        } catch (Exception e) {
-            try (SqlSession session = sqlSessionFactory.openSession()) {
-                session.rollback();
-            }
-            throw e;
-        }
+    public int update(String sql, Map<String, Object> parameters) {
+        return execute(sql, parameters, "UPDATE");
     }
 }
