@@ -156,10 +156,11 @@ public class AbstractWhere<T extends AbstractWhere<T>> implements Where {
 
     @Override
     public String getWhereSql() {
-        if (conditions.isEmpty()) {
-            return "";
+        StringBuilder sql = new StringBuilder();
+        if (!conditions.isEmpty()) {
+            sql.append(" WHERE ").append(String.join(" AND ", conditions));
         }
-        return " WHERE " + String.join(" AND ", conditions);
+        return sql.toString();
     }
 
     @Override
