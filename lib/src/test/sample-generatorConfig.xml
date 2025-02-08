@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE generatorConfiguration
+        PUBLIC "-//mybatis.org//DTD MyBatis Generator Configuration 1.0//EN"
+        "http://mybatis.org/dtd/mybatis-generator-config_1_0.dtd">
+<generatorConfiguration>
+    <context id="sample" targetRuntime="MyBatis3">
+        <!-- プラグインの設定例 -->
+        <plugin type="jp.vemi.seasarbatis.generator.SBEntityMetaPlugin">
+            <property name="addSchemaName" value="true"/>
+        </plugin>
+        
+        <!-- その他の設定例 -->
+    </context>
+</generatorConfiguration>
