@@ -3,20 +3,22 @@
  */
 package jp.vemi.seasarbatis;
 
-import org.apache.ibatis.io.Resources;
-import org.apache.ibatis.scripting.xmltags.DynamicSqlSource;
-import org.apache.ibatis.scripting.xmltags.TextSqlNode;
-import org.apache.ibatis.mapping.BoundSql;
-import org.apache.ibatis.mapping.MappedStatement;
-import org.apache.ibatis.mapping.SqlSource;
-import org.apache.ibatis.mapping.SqlCommandType;
-import org.apache.ibatis.session.SqlSessionFactory;
-
 import java.io.IOException;
 import java.io.Reader;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Stack;
-import java.util.Arrays;
+
+import org.apache.ibatis.io.Resources;
+import org.apache.ibatis.mapping.BoundSql;
+import org.apache.ibatis.mapping.MappedStatement;
+import org.apache.ibatis.mapping.SqlCommandType;
+import org.apache.ibatis.mapping.SqlSource;
+import org.apache.ibatis.scripting.xmltags.DynamicSqlSource;
+import org.apache.ibatis.scripting.xmltags.TextSqlNode;
+import org.apache.ibatis.session.SqlSessionFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * SQLクエリの構築と処理を行うユーティリティクラス。
@@ -41,6 +43,7 @@ import java.util.Arrays;
  * }</pre>
  */
 public class SBQueryBuilder {
+    private static final Logger logger = LoggerFactory.getLogger(SBQueryBuilder.class);
 
     /**
      * SQLをビルドし、実行可能な形式に変換します。
@@ -94,16 +97,32 @@ public class SBQueryBuilder {
             return sql;
         }
 
-        String processedSql = sql;
+        // IF条件の評価を実行
+        String processedSql = processIfConditions(sql, parameters);
+        logger.trace("After IF processing: {}", processedSql);
+
+        // バインド変数の処理
         for (Map.Entry<String, Object> entry : parameters.entrySet()) {
             String paramName = entry.getKey();
-            // パターンを修正: /*paramName*/value 形式
-            String pattern = "/\\*" + paramName + "\\*/[^/]*";
-            processedSql = processedSql.replaceAll(pattern, "?");
-        }
 
-        // IF条件の評価
-        processedSql = processIfConditions(processedSql, parameters);
+            // パターン1: クォートで囲まれた値
+            String quotedPattern = "/\\*" + paramName + "\\*/['\"][^'\"]*['\"]";
+            // パターン2: 数値リテラル
+            String numberPattern = "/\\*" + paramName + "\\*/*-?[0-9.]+";
+            // パターン3: IN句のリスト
+            String inListPattern = "/\\*\\s*" + paramName + "\\s*\\*/\\s*\\([^)]*\\)";
+            // パターン4: LIKEパターン
+            String likePattern = "/\\*\\s*" + paramName + "\\s*\\*/\\s*['\"][%_]*[^'\"]*[%_]*['\"]";
+            // パターン5: NULL値
+            String nullPattern = "/\\*\\s*" + paramName + "\\s*\\*/\\s*null";
+
+            processedSql = processedSql.replaceAll(quotedPattern, "?")
+                    .replaceAll(numberPattern, "?")
+                    .replaceAll(inListPattern, "?")
+                    .replaceAll(likePattern, "?")
+                    .replaceAll(nullPattern, "?");
+
+        }
 
         // 不要なコメントの除去
         processedSql = processedSql.replaceAll("/\\*BEGIN\\*/", "")
@@ -111,6 +130,7 @@ public class SBQueryBuilder {
                 .replaceAll("\\s+", " ")
                 .trim();
 
+        logger.info("Final SQL: {}", processedSql);
         return processedSql;
     }
 
@@ -129,66 +149,49 @@ public class SBQueryBuilder {
         Stack<Boolean> beginStack = new Stack<>();
         beginStack.push(true);
 
+        String pendingLine = null;
+        boolean isInIf = false;
+
         for (String line : lines) {
             line = line.trim();
-            
-            // BEGIN/ENDの処理
-            if (isBeginBlock(line)) {
+            logger.trace("Processing line: {}", line);
+
+            if (line.contains("/*BEGIN*/")) {
                 beginStack.push(true);
                 continue;
             }
-            if (isEndBlock(line)) {
-                handleEndBlock(ifStack, beginStack);
+
+            if (line.contains("/*END*/")) {
+                if (isInIf) {
+                    if (!ifStack.isEmpty() && ifStack.peek() && pendingLine != null) {
+                        result.append(pendingLine).append("\n");
+                    }
+                    ifStack.pop();
+                    isInIf = false;
+                    pendingLine = null;
+                } else if (!beginStack.isEmpty()) {
+                    beginStack.pop();
+                }
                 continue;
             }
 
-            // IF条件の処理
-            if (isIfCondition(line)) {
-                handleIfCondition(line, parameters, ifStack);
+            if (line.contains("/*IF")) {
+                String condition = extractCondition(line);
+                boolean conditionResult = evaluateCondition(condition, parameters);
+                logger.trace("Condition: {} => {}", condition, conditionResult);
+                ifStack.push(conditionResult);
+                isInIf = true;
                 continue;
             }
 
-            // 現在のスコープが有効かチェック
-            boolean isValidScope = checkScope(ifStack, beginStack);
-            if (isValidScope) {
+            if (isInIf) {
+                pendingLine = line;
+            } else if (!ifStack.contains(false)) {
                 result.append(line).append("\n");
             }
         }
 
         return result.toString();
-    }
-
-    private static boolean isBeginBlock(String line) {
-        return line.contains("/*BEGIN*/");
-    }
-
-    private static boolean isEndBlock(String line) {
-        return line.contains("/*END*/");
-    }
-
-    private static void handleEndBlock(Stack<Boolean> ifStack, Stack<Boolean> beginStack) {
-        if (!ifStack.isEmpty()) {
-            ifStack.pop();
-        } else if (!beginStack.isEmpty()) {
-            beginStack.pop();
-        }
-    }
-
-    private static boolean isIfCondition(String line) {
-        return line.contains("/*IF");
-    }
-
-    private static void handleIfCondition(String line, Map<String, Object> parameters, Stack<Boolean> ifStack) {
-        String condition = extractCondition(line);
-        boolean conditionResult = evaluateCondition(condition, parameters);
-        System.out.println("IF Condition: " + condition + " => " + conditionResult); // デバッグ用
-        ifStack.push(conditionResult);
-    }
-
-    private static boolean checkScope(Stack<Boolean> ifStack, Stack<Boolean> beginStack) {
-        boolean isValidIf = ifStack.isEmpty() || !ifStack.contains(false);
-        boolean isValidBegin = !beginStack.isEmpty() && beginStack.peek();
-        return isValidIf && isValidBegin;
     }
 
     /**
