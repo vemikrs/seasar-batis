@@ -30,6 +30,12 @@ dependencies {
     // Runtime only dependencies are not added to the compile classpath of projects that depend on this project.
     runtimeOnly 'mysql:mysql-connector-java:8.0.32'
 
+    // Lombok for generating boilerplate code.
+    compileOnly 'org.projectlombok:lombok:1.18.30'
+    annotationProcessor 'org.projectlombok:lombok:1.18.30'
+    testCompileOnly 'org.projectlombok:lombok:1.18.30'
+    testAnnotationProcessor 'org.projectlombok:lombok:1.18.30'
+
     // SLF4J for logging
     implementation 'org.slf4j:slf4j-api:2.0.1'
     implementation 'ch.qos.logback:logback-classic:1.4.5'
