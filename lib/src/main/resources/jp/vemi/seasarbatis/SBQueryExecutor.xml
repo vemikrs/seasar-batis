@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="jp.vemi.seasarbatis">
+  <!-- SELECT用のPreparedStatement -->
+  <select id="preparedSELECT" parameterType="map" resultType="map">
+    <bind name="sql" value="_sql"/>
+    ${sql}
+  </select>
+
+  <!-- INSERT用のPreparedStatement -->
+  <insert id="preparedINSERT" parameterType="map">
+    <bind name="sql" value="_sql"/>
+    ${sql}
+  </insert>
+
+  <!-- UPDATE用のPreparedStatement -->
+  <update id="preparedUPDATE" parameterType="map">
+    <bind name="sql" value="_sql"/>
+    ${sql}
+  </update>
+
+  <!-- DELETE用のPreparedStatement -->
+  <delete id="preparedDELETE" parameterType="map">
+    <bind name="sql" value="_sql"/>
+    ${sql}
+  </delete>
+</mapper>
