@@ -1,11 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <configuration>
+    <property name="LOG_DIR" value="logs"/>
+    
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
             <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
         </encoder>
     </appender>
 
-    <root level="debug">
-        <appender-ref ref="STDOUT" />
+    <appender name="SQL_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_DIR}/seasar-batis-sql.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_DIR}/seasar-batis-sql.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <logger name="jp.vemi.seasarbatis.SBQueryBuilder" level="TRACE" additivity="false">
+        <appender-ref ref="SQL_FILE"/>
+    </logger>
+
+    <root level="INFO">
+        <appender-ref ref="SQL_FILE"/>
     </root>
 </configuration>
