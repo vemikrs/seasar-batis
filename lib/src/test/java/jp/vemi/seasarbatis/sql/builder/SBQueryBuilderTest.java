@@ -38,7 +38,7 @@ class SBQueryBuilderTest {
             /*END*/
             """;
 
-        String result = SBQueryBuilder.processSQL(sql, params);
+        String result = SBQueryBuilder.processSQL(sql, params, new java.util.ArrayList<>());
         assertTrue(result.contains("amount > ?"));
         assertTrue(result.contains("score >= ?"));
         assertFalse(result.contains("/*"));
@@ -57,7 +57,7 @@ class SBQueryBuilderTest {
             AND FIND_IN_SET(/*user_type*/'ADMIN', user_type)
             """;
 
-        String result = SBQueryBuilder.processSQL(sql, params);
+        String result = SBQueryBuilder.processSQL(sql, params, new java.util.ArrayList<>());
         assertTrue(result.contains("status = ?"));
         assertTrue(result.contains("FIND_IN_SET(?, user_type)"));
     }
@@ -81,7 +81,7 @@ class SBQueryBuilderTest {
             /*END*/
             """;
 
-        String result = SBQueryBuilder.processSQL(sql, params);
+        String result = SBQueryBuilder.processSQL(sql, params, new java.util.ArrayList<>());
         String expectedSql = result.replaceAll("\\s+", " ").trim();
         
         assertTrue(expectedSql.contains("birth_date >= ?"));
@@ -109,7 +109,7 @@ class SBQueryBuilderTest {
             /*END*/
             """;
 
-        String result = SBQueryBuilder.processSQL(sql, params);
+        String result = SBQueryBuilder.processSQL(sql, params, new java.util.ArrayList<>());
         assertTrue(result.contains("id = ?"));
         assertTrue(result.contains("name = ?"));
         assertFalse(result.contains("/*BEGIN*/"));
@@ -135,7 +135,7 @@ class SBQueryBuilderTest {
             /*END*/
             """;
 
-        String result = SBQueryBuilder.processSQL(sql, params);
+        String result = SBQueryBuilder.processSQL(sql, params, new java.util.ArrayList<>());
         assertTrue(result.contains("name IS NULL"));
         assertTrue(result.contains("description IS NOT NULL"));
     }
@@ -174,7 +174,7 @@ class SBQueryBuilderTest {
             /*END*/
             """;
 
-        String result = SBQueryBuilder.processSQL(sql, params);
+        String result = SBQueryBuilder.processSQL(sql, params, new java.util.ArrayList<>());
         assertTrue(result.contains("id IN ?"));
         assertTrue(result.contains("name LIKE ?"));
         assertTrue(result.contains("amount > ?"));
@@ -211,7 +211,7 @@ class SBQueryBuilderTest {
             /*END*/
             """;
 
-        String result = SBQueryBuilder.processSQL(sql, params);
+        String result = SBQueryBuilder.processSQL(sql, params, new java.util.ArrayList<>());
         
         // 危険な文字列が含まれていないことを確認
         assertFalse(result.contains(";"));
