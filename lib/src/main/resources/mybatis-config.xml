@@ -11,6 +11,6 @@
   </settings>
 
   <mappers>
-    <mapper resource="jp/vemi/seasarbatis/SBQueryExecutor.xml"/>
+    <mapper resource="jp/vemi/seasarbatis/sql/executor/SBQueryExecutor.xml"/>
   </mappers>
 </configuration>
