@@ -6,8 +6,11 @@ package jp.vemi.seasarbatis.sql.builder;
 import java.io.IOException;
 import java.io.Reader;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.Stack;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.apache.ibatis.io.Resources;
 import org.apache.ibatis.mapping.BoundSql;
@@ -91,6 +94,8 @@ public class SBQueryBuilder {
     /**
      * SQL文を処理し、バインドパラメータを解決します。
      * Seasar2形式のバインド変数をサポートします。
+     * 
+     * @deprecated processSQL(String, Map<String, Object>, List<Object>)を使用してください。
      */
     public static String processSQL(String sql, Map<String, Object> parameters) {
         if (parameters == null || parameters.isEmpty()) {
@@ -130,6 +135,67 @@ public class SBQueryBuilder {
                 .replaceAll("\\s+", " ")
                 .trim();
 
+        logger.info("Final SQL: {}", processedSql);
+        return processedSql;
+    }
+
+    /**
+     * SQL文を処理し、バインドパラメータを解決します。
+     * Seasar2形式のバインド変数（パターン1～パターン5）をサポートし、
+     * 置換された順序で変数のリストをparamListに追加します。
+     *
+     * @param sql        SQL文
+     * @param parameters バインドパラメータ
+     * @param paramList  パラメータリスト（呼び出し側で用意）
+     * @return 処理済みのSQL文（プレースホルダに「?」が設定された状態）
+     */
+    public static String processSQL(String sql, Map<String, Object> parameters, List<Object> paramList) {
+        if (parameters == null || parameters.isEmpty()) {
+            return sql;
+        }
+
+        // IF条件の評価
+        String processedSql = processIfConditions(sql, parameters);
+        logger.trace("After IF processing: {}", processedSql);
+
+        // 各バインド変数ごとに処理を行う
+        for (Map.Entry<String, Object> entry : parameters.entrySet()) {
+            String paramName = entry.getKey();
+            Object value = entry.getValue();
+
+            // 各パターンで置換とパラメータの抽出を実施する
+            String[] patterns = new String[] {
+                    // パターン1: クォートで囲まれた値
+                    "/\\*\\s*" + paramName + "\\s*\\*/['\"][^'\"]*['\"]",
+                    // パターン2: 数値リテラル
+                    "/\\*\\s*" + paramName + "\\s*\\*/-?[0-9.]+",
+                    // パターン3: IN句のリスト
+                    "/\\*\\s*" + paramName + "\\s*\\*/\\s*\\([^)]*\\)",
+                    // パターン4: LIKEパターン
+                    "/\\*\\s*" + paramName + "\\s*\\*/\\s*['\"][%_]*[^'\"]*[%_]*['\"]",
+                    // パターン5: NULL値
+                    "/\\*\\s*" + paramName + "\\s*\\*/\\s*null"
+            };
+
+            for (String pattern : patterns) {
+                Pattern p = Pattern.compile(pattern, Pattern.CASE_INSENSITIVE);
+                Matcher m = p.matcher(processedSql);
+                StringBuffer sb = new StringBuffer();
+                // マッチした箇所ごとに「?」に置換し、置換順にparamListへ値を追加
+                while (m.find()) {
+                    m.appendReplacement(sb, "?");
+                    paramList.add(value);
+                }
+                m.appendTail(sb);
+                processedSql = sb.toString();
+            }
+        }
+
+        // 不要なコメントの除去と整形
+        processedSql = processedSql.replaceAll("/\\*BEGIN\\*/", "")
+                .replaceAll("/\\*END\\*/", "")
+                .replaceAll("\\s+", " ")
+                .trim();
         logger.info("Final SQL: {}", processedSql);
         return processedSql;
     }

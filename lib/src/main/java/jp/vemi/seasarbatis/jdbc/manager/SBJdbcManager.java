@@ -6,6 +6,7 @@ package jp.vemi.seasarbatis.jdbc.manager;
 import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -23,6 +24,7 @@ import jp.vemi.seasarbatis.jdbc.updater.UpdateBuilder;
 import jp.vemi.seasarbatis.meta.SBColumnMeta;
 import jp.vemi.seasarbatis.meta.SBTableMeta;
 import jp.vemi.seasarbatis.sql.executor.SBQueryExecutor;
+import jp.vemi.seasarbatis.util.SBEntityClassUtils;
 
 /**
  * JDBC操作を簡素化するマネージャークラス。
@@ -113,7 +115,7 @@ public class SBJdbcManager {
 
     // エンティティクラス操作
     /**
-     * 主キーに基づいてエンティティを検索します。
+     * 主キーに基づいてエンティティを検索します。（例外をスローしない）
      * 
      * @param <T>         エンティティの型
      * @param entityClass エンティティのクラス
@@ -121,7 +123,7 @@ public class SBJdbcManager {
      * @return 検索されたエンティティ、存在しない場合はnull
      * @throws IllegalArgumentException 指定された主キーの数が不正な場合
      */
-    public <T> T findByPk(Class<T> entityClass, Object... primaryKeys) {
+    public <T> T findByPkNoException(Class<T> entityClass, Object... primaryKeys) {
         PrimaryKeyInfo pkInfo = getPrimaryKeyInfo(entityClass);
         if (primaryKeys.length != pkInfo.columnNames.size()) {
             throw new IllegalArgumentException(
@@ -132,7 +134,7 @@ public class SBJdbcManager {
         String tableName = getTableName(entityClass);
         StringBuilder sql = new StringBuilder("SELECT * FROM " + tableName + " WHERE ");
 
-        Map<String, Object> params = new HashMap<>();
+        Map<String, Object> params = new LinkedHashMap<>();
         for (int i = 0; i < primaryKeys.length; i++) {
             if (i > 0)
                 sql.append(" AND ");
@@ -141,8 +143,25 @@ public class SBJdbcManager {
             params.put("pk" + i, primaryKeys[i]);
         }
 
-        List<T> results = queryExecutor.select(sql.toString(), params);
-        return results.isEmpty() ? null : results.get(0);
+        List<Map<String, Object>> results = queryExecutor.select(sql.toString(), params);
+        return results.isEmpty() ? null : SBEntityClassUtils.mapToEntity(entityClass, results.get(0));
+    }
+
+    /**
+     * 主キーに基づいてエンティティを検索します。
+     * 
+     * @param <T>         エンティティの型
+     * @param entityClass エンティティのクラス
+     * @param primaryKeys 主キーの値（複数可）
+     * @return 検索されたエンティティ、存在しない場合はnull
+     * @throws IllegalArgumentException 指定された主キーの数が不正な場合
+     */
+    public <T> T findByPk(Class<T> entityClass, Object... primaryKeys) {
+        T entity = findByPkNoException(entityClass, primaryKeys);
+        if (entity == null) {
+            throw new IllegalArgumentException("エンティティが見つかりません: " + entityClass.getName());
+        }
+        return entity;
     }
 
     /**
@@ -155,7 +174,13 @@ public class SBJdbcManager {
     public <T> List<T> findAll(Class<T> entityClass) {
         String tableName = getTableName(entityClass);
         String sql = "SELECT * FROM " + tableName;
-        return queryExecutor.select(sql, new HashMap<>());
+        List<Map<String, Object>> result = queryExecutor.select(sql, new HashMap<>());
+        if (result == null) {
+            return java.util.Collections.emptyList();
+        }
+        return result.stream()
+                .map(row -> SBEntityClassUtils.mapToEntity(entityClass, row))
+                .collect(Collectors.toList());
     }
 
     /**

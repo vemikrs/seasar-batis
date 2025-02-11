@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.Map;
 
 import jp.vemi.seasarbatis.criteria.OrderDirection;
-import jp.vemi.seasarbatis.criteria.SimpleWhere;
 import jp.vemi.seasarbatis.criteria.Where;
 import jp.vemi.seasarbatis.jdbc.manager.SBJdbcManager;
 

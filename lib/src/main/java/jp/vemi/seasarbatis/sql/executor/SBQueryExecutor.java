@@ -48,16 +48,25 @@ public class SBQueryExecutor {
 
     @SuppressWarnings("unchecked")
     private <T> T executeInternal(String sql, Map<String, Object> parameters, String commandType) {
-        String processedSql = SBQueryBuilder.processSQL(sql, parameters);
+        List<Object> paramList = new java.util.ArrayList<>();
+        String processedSql = SBQueryBuilder.processSQL(sql, parameters, paramList);
+
+        // SQL中の ? を #{param0}, #{param1}, ... に変換
+        for (int i = 0; i < paramList.size(); i++) {
+            processedSql = processedSql.replaceFirst("\\?", "#\\{param" + i + "\\}");
+        }
+
         logger.debug("Executing {} SQL: {}", commandType, processedSql);
 
         try (SqlSession session = sqlSessionFactory.openSession(false)) {
-            // PreparedStatementを使用するようにマッピング
-            Map<String, Object> params = new HashMap<>(parameters);
+            Map<String, Object> params = new HashMap<>();
             params.put("_sql", processedSql);
-            
+            for (int i = 0; i < paramList.size(); i++) {
+                params.put("param" + i, paramList.get(i));
+            }
+
             Object result = null;
-            String statement = "prepared" + commandType;  // preparedSELECT など
+            String statement = "prepared" + commandType; // preparedSELECT など
 
             switch (commandType) {
                 case "SELECT":
@@ -94,10 +103,11 @@ public class SBQueryExecutor {
 
     /**
      * SQLを実行し、結果を取得します。
-     * @param <T> 戻り値の型
-     * @param sql SQL文
+     * 
+     * @param <T>        戻り値の型
+     * @param sql        SQL文
      * @param parameters バインドパラメータ
-     * @return  実行結果
+     * @return 実行結果
      */
     public <T> List<T> select(String sql, Map<String, Object> parameters) {
         return execute(sql, parameters, "SELECT");
@@ -105,7 +115,8 @@ public class SBQueryExecutor {
 
     /**
      * SQLを実行し、結果を取得します。
-     * @param sql SQL文
+     * 
+     * @param sql        SQL文
      * @param parameters バインドパラメータ
      * @return 実行結果
      */
