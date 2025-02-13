@@ -1,12 +1,62 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!DOCTYPE mapper [
+  <!ELEMENT mapper (select | insert | update | delete)+>
+  <!ATTLIST mapper namespace CDATA #REQUIRED>
+
+  <!ELEMENT select (#PCDATA | script)*>
+  <!ATTLIST select 
+      id CDATA #REQUIRED
+      parameterType CDATA #IMPLIED
+      resultType CDATA #IMPLIED
+      lang CDATA #IMPLIED>
+
+  <!ELEMENT insert (#PCDATA | script)*>
+  <!ATTLIST insert 
+      id CDATA #REQUIRED
+      parameterType CDATA #IMPLIED
+      lang CDATA #IMPLIED>
+
+  <!ELEMENT update (#PCDATA | script)*>
+  <!ATTLIST update 
+      id CDATA #REQUIRED
+      parameterType CDATA #IMPLIED
+      lang CDATA #IMPLIED>
+
+  <!ELEMENT delete (#PCDATA | script)*>
+  <!ATTLIST delete 
+      id CDATA #REQUIRED
+      parameterType CDATA #IMPLIED
+      lang CDATA #IMPLIED>
+
+  <!ELEMENT script (#PCDATA)>
+]>
 <mapper namespace="jp.vemi.seasarbatis">
   <!-- SELECT用のステートメント -->
-  <select id="preparedSELECT" parameterType="map" resultType="map"> ${sql} </select>
+  <select id="preparedSELECT" parameterType="map" resultType="map"
+      lang="jp.vemi.seasarbatis.scripting.SBScriptLanguageDriver">
+    <script>
+      ${_sql}
+    </script>
+  </select>
   <!-- INSERT用のステートメント -->
-  <insert id="preparedINSERT" parameterType="map"> ${sql} </insert>
+  <insert id="preparedINSERT" parameterType="map"
+      lang="jp.vemi.seasarbatis.scripting.SBScriptLanguageDriver">
+    <script>
+      ${_sql}
+    </script>
+  </insert>
   <!-- UPDATE用のステートメント -->
-  <update id="preparedUPDATE" parameterType="map"> ${sql} </update>
+  <update id="preparedUPDATE" parameterType="map"
+      lang="jp.vemi.seasarbatis.scripting.SBScriptLanguageDriver">
+    <script>
+      ${_sql}
+    </script>
+  </update>
   <!-- DELETE用のステートメント -->
-  <delete id="preparedDELETE" parameterType="map"> ${sql} </delete>
+  <delete id="preparedDELETE" parameterType="map"
+      lang="jp.vemi.seasarbatis.scripting.SBScriptLanguageDriver">
+    <script>
+      ${_sql}
+    </script>
+  </delete>
 </mapper>
