@@ -12,6 +12,7 @@ import java.util.function.Consumer;
 import jp.vemi.seasarbatis.core.criteria.OrderDirection;
 import jp.vemi.seasarbatis.core.criteria.SBWhere;
 import jp.vemi.seasarbatis.core.criteria.SimpleWhere;
+import jp.vemi.seasarbatis.core.sql.SBSqlFormatter;
 import jp.vemi.seasarbatis.jdbc.SBJdbcManager;
 
 /**
@@ -47,8 +48,8 @@ public class SBSelectBuilder<E> implements
         sql.append("SELECT * FROM ")
                 .append(jdbcManager.getTableName(entityClass));
 
-        if (where != null) {
-            sql.append(" WHERE ").append(where.build());
+        if (where != null && !where.build().isEmpty()) {
+            sql.append(where.build());
             parameters.putAll(where.getParameters());
         }
 
@@ -57,7 +58,7 @@ public class SBSelectBuilder<E> implements
                     .append(String.join(", ", orderByList));
         }
 
-        return sql.toString();
+        return SBSqlFormatter.simplify(sql.toString());
     }
 
     @Override
