@@ -21,10 +21,9 @@
   - Javadoc コメントは、`/**`で始まり、`*/`で終わります。
   - Javadoc コメントの各行は、`*`で始めます。
 - 各ファイルには、必ず著作権表示を記述します。  
-   著作権の記述例は、以下の通りです。
+   Javaの著作権の記述例は、以下の通りです。
   ```
   /*
-  * SeasarBatis - Seasar2ライクなMyBatis実装
   * Copyright (C) 2025 VEMI, All Rights Reserved.
   */
   ```
