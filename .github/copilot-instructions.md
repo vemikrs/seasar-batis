@@ -1,15 +1,31 @@
 ## リポジトリ基礎情報
-- このリポジトリはSeasar2ライクなMyBatis実装を提供するプロジェクトです。
-- GradleベースのJavaライブラリプロジェクトです。
-- Gradleのバージョンは8.9を使用しています。
+
+- このリポジトリは Seasar2 ライクな MyBatis 実装を提供するプロジェクトです。
+- Gradle ベースの Java ライブラリプロジェクトです。
+- Gradle のバージョンは 8.9 を使用しています。
 
 ## このプロジェクトについて
+
 - プロジェクト名は「SeasarBatis」です。
-- このプロジェクトは、Seasar2のS2TIGERプロジェクトのインタフェースや仕様を参考にしていますが、Seasar2プロジェクトとは無関係です。
+- このプロジェクトは、Seasar2 の S2TIGER プロジェクトのインタフェースや仕様を参考にしていますが、Seasar2 プロジェクトとは無関係です。
 
 ## ルール
+
 - 基本パッケージ名は「jp.vemi.seasarbatis」を使用します。
 - 各種設定や依存関係は、以下の複数の`build.gradle`ファイルに記述します。
-    - `build.gradle` (ルートプロジェクト)
-    - `lib/build.gradle` (コアモジュール)
-    - `spring/build.gradle` (Spring統合モジュール)
+  - `build.gradle` (ルートプロジェクト)
+  - `lib/build.gradle` (コアモジュール)
+  - `spring/build.gradle` (Spring 統合モジュール)
+- 可視性が private 以外のメソッド、クラスについて、常に Javadoc コメントを日本語で記述します。
+  - Javadoc コメントは、メソッドやクラスの説明、引数の説明、戻り値の説明、例外の説明を記述します。
+  - Javadoc コメントは、`/**`で始まり、`*/`で終わります。
+  - Javadoc コメントの各行は、`*`で始めます。
+- 各ファイルには、必ず著作権表示を記述します。  
+   著作権の記述例は、以下の通りです。  
+  ```
+  /*
+  * SeasarBatis - Seasar2ライクなMyBatis実装
+  * Copyright (C) 2025 VEMI, All Rights Reserved.
+  */
+  ```
+-
