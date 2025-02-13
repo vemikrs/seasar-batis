@@ -8,7 +8,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-public class AbstractWhere<T extends AbstractWhere<T>> implements Where {
+public class AbstractWhere<T extends AbstractWhere<T>> implements SBWhere {
 
     protected final List<String> conditions = new ArrayList<>();
     protected final Map<String, Object> parameters = new LinkedHashMap<>();
@@ -169,7 +169,7 @@ public class AbstractWhere<T extends AbstractWhere<T>> implements Where {
     }
 
     @Override
-    public Where and(Where where) {
+    public SBWhere and(SBWhere where) {
         if (where != null && where.hasConditions()) {
             String whereSql = where.getWhereSql().replace("WHERE", "");
             addCondition("(" + whereSql + ")");
@@ -179,7 +179,7 @@ public class AbstractWhere<T extends AbstractWhere<T>> implements Where {
     }
 
     @Override
-    public Where or(Where where) {
+    public SBWhere or(SBWhere where) {
         if (where != null && where.hasConditions()) {
             conditions.add("OR");
             String whereSql = where.getWhereSql().replace("WHERE", "");
@@ -190,47 +190,47 @@ public class AbstractWhere<T extends AbstractWhere<T>> implements Where {
     }
 
     @Override
-    public Where and(String column, Object value) {
+    public SBWhere and(String column, Object value) {
         return and(column, value, true);
     }
 
     @Override
-    public Where or(String column, Object value) {
+    public SBWhere or(String column, Object value) {
         return or(column, value, true);
     }
 
     @Override
-    public Where and(String column, Object value, boolean isAdd) {
+    public SBWhere and(String column, Object value, boolean isAdd) {
         return and(column, value, isAdd, false);
     }
 
     @Override
-    public Where or(String column, Object value, boolean isAdd) {
+    public SBWhere or(String column, Object value, boolean isAdd) {
         return or(column, value, isAdd, false);
     }
 
     @Override
-    public Where and(String column, Object value, boolean isAdd, boolean isOr) {
+    public SBWhere and(String column, Object value, boolean isAdd, boolean isOr) {
         return and(column, value, isAdd, isOr, false);
     }
 
     @Override
-    public Where or(String column, Object value, boolean isAdd, boolean isOr) {
+    public SBWhere or(String column, Object value, boolean isAdd, boolean isOr) {
         return or(column, value, isAdd, isOr, false);
     }
 
     @Override
-    public Where and(String column, Object value, boolean isAdd, boolean isOr, boolean isNot) {
+    public SBWhere and(String column, Object value, boolean isAdd, boolean isOr, boolean isNot) {
         return and(column, value, isAdd, isOr, isNot, true);
     }
 
     @Override
-    public Where or(String column, Object value, boolean isAdd, boolean isOr, boolean isNot) {
+    public SBWhere or(String column, Object value, boolean isAdd, boolean isOr, boolean isNot) {
         return or(column, value, isAdd, isOr, isNot, true);
     }
 
     @Override
-    public Where and(String column, Object value, boolean isAdd, boolean isOr, boolean isNot, boolean isAnd) {
+    public SBWhere and(String column, Object value, boolean isAdd, boolean isOr, boolean isNot, boolean isAnd) {
         if (!isAdd || value == null) {
             return this;
         }
@@ -252,7 +252,7 @@ public class AbstractWhere<T extends AbstractWhere<T>> implements Where {
     }
 
     @Override
-    public Where or(String column, Object value, boolean isAdd, boolean isOr, boolean isNot, boolean isAnd) {
+    public SBWhere or(String column, Object value, boolean isAdd, boolean isOr, boolean isNot, boolean isAnd) {
         if (!isAdd || value == null) {
             return this;
         }
@@ -276,5 +276,10 @@ public class AbstractWhere<T extends AbstractWhere<T>> implements Where {
     @Override
     public boolean hasConditions() {
         return !conditions.isEmpty();
+    }
+
+    @Override
+    public String build() {
+        return getWhereSql();
     }
 }

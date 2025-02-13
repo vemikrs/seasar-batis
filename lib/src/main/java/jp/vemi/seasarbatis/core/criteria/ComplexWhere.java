@@ -14,7 +14,7 @@ import java.util.Map;
  */
 public class ComplexWhere extends AbstractWhere<ComplexWhere> {
 
-    private final List<Where> wheres = new ArrayList<>();
+    private final List<SBWhere> wheres = new ArrayList<>();
     private final List<String> operators = new ArrayList<>();
     private String nextOperator = "AND";
 
@@ -24,7 +24,7 @@ public class ComplexWhere extends AbstractWhere<ComplexWhere> {
      * @param where 追加する条件
      * @return このインスタンス
      */
-    public ComplexWhere add(Where where) {
+    public ComplexWhere add(SBWhere where) {
         if (where != null && where.hasConditions()) {
             wheres.add(where);
             if (!operators.isEmpty()) {
@@ -84,7 +84,7 @@ public class ComplexWhere extends AbstractWhere<ComplexWhere> {
     @Override
     public Map<String, Object> getParameters() {
         Map<String, Object> allParams = new LinkedHashMap<>(super.getParameters());
-        for (Where where : wheres) {
+        for (SBWhere where : wheres) {
             allParams.putAll(where.getParameters());
         }
         return allParams;
@@ -95,6 +95,6 @@ public class ComplexWhere extends AbstractWhere<ComplexWhere> {
         if (super.hasConditions()) {
             return true;
         }
-        return wheres.stream().anyMatch(Where::hasConditions);
+        return wheres.stream().anyMatch(SBWhere::hasConditions);
     }
 }

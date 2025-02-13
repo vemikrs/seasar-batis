@@ -16,13 +16,14 @@ import org.apache.ibatis.session.SqlSessionFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import jp.vemi.seasarbatis.core.builder.SBDeleteBuilder;
+import jp.vemi.seasarbatis.core.builder.SBSelectBuilder;
+import jp.vemi.seasarbatis.core.builder.SBUpdateBuilder;
 import jp.vemi.seasarbatis.core.criteria.ComplexWhere;
+import jp.vemi.seasarbatis.core.criteria.SBWhere;
 import jp.vemi.seasarbatis.core.criteria.SimpleWhere;
-import jp.vemi.seasarbatis.core.criteria.Where;
 import jp.vemi.seasarbatis.core.meta.SBColumnMeta;
 import jp.vemi.seasarbatis.core.meta.SBTableMeta;
-import jp.vemi.seasarbatis.jdbc.selector.From;
-import jp.vemi.seasarbatis.jdbc.updater.UpdateBuilder;
 import jp.vemi.seasarbatis.sql.executor.SBQueryExecutor;
 import jp.vemi.seasarbatis.util.SBEntityClassUtils;
 
@@ -344,10 +345,10 @@ public class SBJdbcManager {
      * 
      * @param <T>         エンティティの型
      * @param entityClass エンティティのクラス
-     * @return SelectクエリビルダーのFromインスタンス
+     * @return SelectビルダーのFromインスタンス
      */
-    public <T> From<T> from(Class<T> entityClass) {
-        return new From<>(this, entityClass);
+    public <T> SBSelectBuilder<T> from(Class<T> entityClass) {
+        return new SBSelectBuilder<T>(this, entityClass);
     }
 
     /**
@@ -357,8 +358,19 @@ public class SBJdbcManager {
      * @param entityClass 更新対象のエンティティクラス
      * @return UpdateBuilderインスタンス
      */
-    public <T> UpdateBuilder<T> update(Class<T> entityClass) {
-        return new UpdateBuilder<>(this, entityClass);
+    public <T> SBUpdateBuilder<T> update(Class<T> entityClass) {
+        return new SBUpdateBuilder<>(this, entityClass);
+    }
+
+    /**
+     * DELETE文の構築を開始します。
+     * 
+     * @param <T>         エンティティの型
+     * @param entityClass 削除対象のエンティティクラス
+     * @return DeleteBuilderインスタンス
+     */
+    public <T> SBDeleteBuilder<T> delete(Class<T> entityClass) {
+        return new SBDeleteBuilder<>(this, entityClass);
     }
 
     /**
@@ -369,7 +381,7 @@ public class SBJdbcManager {
      * @param where       検索条件
      * @return 検索結果のリスト
      */
-    public <T> List<T> where(Class<T> entityClass, Where where) {
+    public <T> List<T> where(Class<T> entityClass, SBWhere where) {
         String tableName = getTableName(entityClass);
         String sql = "SELECT * FROM " + tableName + where.getWhereSql();
         return queryExecutor.select(sql, where.getParameters());
