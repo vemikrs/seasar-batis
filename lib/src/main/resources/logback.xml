@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
-    <property name="LOG_DIR" value="logs"/>
-    
+    <property name="LOG_DIR" value="logs" />
+
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
             <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
@@ -19,11 +19,28 @@
         </encoder>
     </appender>
 
-    <logger name="jp.vemi.seasarbatis.SBQueryBuilder" level="TRACE" additivity="false">
-        <appender-ref ref="SQL_FILE"/>
+    <logger name="jp.vemi.seasarbatis.core" level="DEBUG" additivity="false">
+        <appender-ref ref="STDOUT" />
+    </logger>
+    <logger name="jp.vemi.seasarbatis.jdbc" level="DEBUG" additivity="false">
+        <appender-ref ref="STDOUT" />
+    </logger>
+    <logger name="jp.vemi.seasarbatis.core.sql" level="DEBUG" additivity="false">
+        <appender-ref ref="STDOUT" />
+    </logger>
+    <logger name="jp.vemi.seasarbatis.core.mapping" level="DEBUG" additivity="false">
+        <appender-ref ref="STDOUT" />
+    </logger>
+    <logger name="jp.vemi.seasarbatis.core.sql.executor" level="DEBUG" additivity="false">
+        <appender-ref ref="STDOUT" />
+    </logger>
+
+    <!-- iBatis LOG -->
+    <logger name="org.apache.ibatis" level="DEBUG" additivity="false">
+        <appender-ref ref="STDOUT" />
     </logger>
 
     <root level="INFO">
-        <appender-ref ref="SQL_FILE"/>
+        <appender-ref ref="STDOUT" />
     </root>
 </configuration>
