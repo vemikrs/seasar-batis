@@ -20,7 +20,6 @@ import jp.vemi.seasarbatis.core.builder.SBDeleteBuilder;
 import jp.vemi.seasarbatis.core.builder.SBSelectBuilder;
 import jp.vemi.seasarbatis.core.builder.SBUpdateBuilder;
 import jp.vemi.seasarbatis.core.criteria.ComplexWhere;
-import jp.vemi.seasarbatis.core.criteria.SBWhere;
 import jp.vemi.seasarbatis.core.criteria.SimpleWhere;
 import jp.vemi.seasarbatis.core.meta.SBColumnMeta;
 import jp.vemi.seasarbatis.core.meta.SBTableMeta;
@@ -46,7 +45,7 @@ public class SBJdbcManager {
         this.queryExecutor = new SBQueryExecutor(sqlSessionFactory);
     }
 
-    // 生SQL実行
+    // SQL実行
     /**
      * SQL文に基づいて検索を実行します。
      * 
@@ -55,8 +54,34 @@ public class SBJdbcManager {
      * @param params パラメータ
      * @return 検索結果のリスト
      */
-    public <T> List<T> findBySql(String sql, Map<String, Object> params) {
+    public <T> List<T> selectBySql(String sql, Map<String, Object> params) {
         return queryExecutor.select(sql, params);
+    }
+
+    /**
+     * SQLファイルに基づいて検索を実行します。
+     * 
+     * @param <T>     戻り値の要素型
+     * @param sqlFile SQLファイルのパス
+     * @param params  パラメータ
+     * @return 検索結果のリスト
+     */
+    public <T> List<T> selectBySqlFile(String sqlFile, Map<String, Object> params) {
+        return queryExecutor.executeFile(sqlFile, params, "SELECT");
+    }
+
+    /**
+     * INSERT文を実行します。
+     */
+    public int insert(String sql, Map<String, Object> params) {
+        return queryExecutor.execute(sql, params, "INSERT");
+    }
+
+    /**
+     * SQLファイルからINSERT文を実行します。
+     */
+    public int insertBySqlFile(String sqlFile, Map<String, Object> params) {
+        return queryExecutor.executeFile(sqlFile, params, "INSERT");
     }
 
     /**
@@ -71,10 +96,10 @@ public class SBJdbcManager {
     }
 
     /**
-     * INSERT文を実行します。
+     * SQLファイルからUPDATE文を実行します。
      */
-    public int insert(String sql, Map<String, Object> params) {
-        return queryExecutor.execute(sql, params, "INSERT");
+    public int updateBySqlFile(String sqlFile, Map<String, Object> params) {
+        return queryExecutor.executeFile(sqlFile, params, "UPDATE");
     }
 
     /**
@@ -84,33 +109,6 @@ public class SBJdbcManager {
         return queryExecutor.execute(sql, params, "DELETE");
     }
 
-    // SQLファイル実行
-    /**
-     * SQLファイルに基づいて検索を実行します。
-     * 
-     * @param <T>     戻り値の要素型
-     * @param sqlFile SQLファイルのパス
-     * @param params  パラメータ
-     * @return 検索結果のリスト
-     */
-    public <T> List<T> findBySqlFile(String sqlFile, Map<String, Object> params) {
-        return queryExecutor.executeFile(sqlFile, params, "SELECT");
-    }
-
-    /**
-     * SQLファイルからUPDATE文を実行します。
-     */
-    public int updateBySqlFile(String sqlFile, Map<String, Object> params) {
-        return queryExecutor.executeFile(sqlFile, params, "UPDATE");
-    }
-
-    /**
-     * SQLファイルからINSERT文を実行します。
-     */
-    public int insertBySqlFile(String sqlFile, Map<String, Object> params) {
-        return queryExecutor.executeFile(sqlFile, params, "INSERT");
-    }
-
     /**
      * SQLファイルからDELETE文を実行します。
      */
@@ -118,7 +116,7 @@ public class SBJdbcManager {
         return queryExecutor.executeFile(sqlFile, params, "DELETE");
     }
 
-    // エンティティクラス操作
+    // ---------- エンティティ操作 ----------
     /**
      * 主キーに基づいてエンティティを検索します。（例外をスローしない）
      * 
@@ -339,7 +337,7 @@ public class SBJdbcManager {
         }
     }
 
-    // エンティティクラスのFluentツール
+    // ---------- Fluent API ----------
     /**
      * エンティティに対するSelect操作を開始します。
      * 
@@ -371,20 +369,6 @@ public class SBJdbcManager {
      */
     public <T> SBDeleteBuilder<T> delete(Class<T> entityClass) {
         return new SBDeleteBuilder<>(this, entityClass);
-    }
-
-    /**
-     * Where条件に基づいて検索を実行します。
-     * 
-     * @param <T>         エンティティの型
-     * @param entityClass エンティティのクラス
-     * @param where       検索条件
-     * @return 検索結果のリスト
-     */
-    public <T> List<T> where(Class<T> entityClass, SBWhere where) {
-        String tableName = getTableName(entityClass);
-        String sql = "SELECT * FROM " + tableName + where.getWhereSql();
-        return queryExecutor.select(sql, where.getParameters());
     }
 
     /**

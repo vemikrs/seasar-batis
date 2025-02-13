@@ -95,7 +95,7 @@ public class SBSelectBuilder<E> implements
      * @return エンティティのリスト
      */
     public List<E> getResultList() {
-        return jdbcManager.findBySql(build(), getParameters());
+        return jdbcManager.selectBySql(build(), getParameters());
     }
 
     /**
