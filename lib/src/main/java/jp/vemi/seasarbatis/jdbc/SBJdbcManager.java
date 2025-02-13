@@ -1,7 +1,7 @@
 /*
  * Copyright(c) 2025 VEMIDaS, All rights reserved.
  */
-package jp.vemi.seasarbatis.jdbc.manager;
+package jp.vemi.seasarbatis.jdbc;
 
 import java.lang.reflect.Field;
 import java.util.Arrays;
@@ -29,6 +29,10 @@ import jp.vemi.seasarbatis.util.SBEntityClassUtils;
 /**
  * JDBC操作を簡素化するマネージャークラス。
  * Seasar2のJdbcManagerに似た操作性を提供します。
+ * 
+ * @author H.Kurosawa
+ * @version 1.0
+ * @since 2025/01/01
  */
 public class SBJdbcManager {
     private static final Logger logger = LoggerFactory.getLogger(SBJdbcManager.class);

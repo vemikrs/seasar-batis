@@ -18,6 +18,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import jp.vemi.seasarbatis.criteria.SimpleWhere;
+import jp.vemi.seasarbatis.jdbc.SBJdbcManager;
 import jp.vemi.seasarbatis.test.entity.TestSbUser;
 import jp.vemi.seasarbatis.criteria.OrderDirection;
 

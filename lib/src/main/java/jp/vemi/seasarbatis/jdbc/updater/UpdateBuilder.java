@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import jp.vemi.seasarbatis.criteria.Where;
-import jp.vemi.seasarbatis.jdbc.manager.SBJdbcManager;
+import jp.vemi.seasarbatis.jdbc.SBJdbcManager;
 
 /**
  * UPDATE文を構築するためのビルダークラス。

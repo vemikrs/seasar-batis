@@ -8,9 +8,10 @@ import java.util.List;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.stereotype.Component;
 
-import jp.vemi.seasarbatis.jdbc.manager.SBJdbcManager;
+import jp.vemi.seasarbatis.jdbc.SBJdbcManager;
+
+import org.springframework.stereotype.Component;
 
 /**
  * SpringJdbcManager.
