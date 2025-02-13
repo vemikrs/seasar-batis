@@ -1,4 +1,7 @@
-package jp.vemi.seasarbatis.util;
+/*
+ * Copyright(c) 2025 VEMI All Rights Reserved.
+ */
+package jp.vemi.seasarbatis.core.util;
 
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
@@ -10,6 +13,11 @@ import java.util.Map;
 
 import jp.vemi.seasarbatis.core.meta.SBColumnMeta;
 
+/**
+ * @deprecated このクラスは廃止予定です。代わりに
+ *             {@link jp.vemi.seasarbatis.core.util.SBTypeConverterUtils}
+ *             を使用してください。
+ */
 public class SBEntityClassUtils {
 
     public static <T> T mapToEntity(Class<T> entityClass, Map<String, Object> row) {
