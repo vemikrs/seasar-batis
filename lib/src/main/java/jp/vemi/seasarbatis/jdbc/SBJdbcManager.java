@@ -23,7 +23,7 @@ import jp.vemi.seasarbatis.core.criteria.ComplexWhere;
 import jp.vemi.seasarbatis.core.criteria.SimpleWhere;
 import jp.vemi.seasarbatis.core.meta.SBColumnMeta;
 import jp.vemi.seasarbatis.core.meta.SBTableMeta;
-import jp.vemi.seasarbatis.sql.executor.SBQueryExecutor;
+import jp.vemi.seasarbatis.core.sql.executor.SBQueryExecutor;
 import jp.vemi.seasarbatis.util.SBEntityClassUtils;
 
 /**

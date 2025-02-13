@@ -1,16 +1,16 @@
 /*
  * Copyright(c) 2025 VEMIDaS, All rights reserved.
  */
-package jp.vemi.seasarbatis.sql.processor;
+package jp.vemi.seasarbatis.core.sql.processor;
 
 import java.io.IOException;
 import java.util.Map;
 
 import org.apache.ibatis.session.SqlSessionFactory;
 
-import jp.vemi.seasarbatis.sql.ParsedSql;
-import jp.vemi.seasarbatis.sql.ProcessedSql;
-import jp.vemi.seasarbatis.sql.loader.SBSqlFileLoader;
+import jp.vemi.seasarbatis.core.sql.ParsedSql;
+import jp.vemi.seasarbatis.core.sql.ProcessedSql;
+import jp.vemi.seasarbatis.core.sql.loader.SBSqlFileLoader;
 
 /**
  * SQLを解析するクラスです。
@@ -42,8 +42,7 @@ public class SBSqlProcessor {
         // 3. 解析結果と実行用パラメータを保持したオブジェクトを返す
         return ProcessedSql.builder()
                 .sql(processedSql)
-                .parameters(parsedSql.getParameters())
-                .parameterPositions(parsedSql.getParameterPositions())
+                .params(parsedSql.getOrderedParameters())
                 .build();
     }
 

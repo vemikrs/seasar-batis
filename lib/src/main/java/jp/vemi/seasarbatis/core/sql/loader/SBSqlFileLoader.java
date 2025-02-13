@@ -1,7 +1,7 @@
 /*
  * Copyright(c) 2025 VEMIDaS, All rights reserved.
  */
-package jp.vemi.seasarbatis.sql.loader;
+package jp.vemi.seasarbatis.core.sql.loader;
 
 import java.io.IOException;
 import java.io.Reader;

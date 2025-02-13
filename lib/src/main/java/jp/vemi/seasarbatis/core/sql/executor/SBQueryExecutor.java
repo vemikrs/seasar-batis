@@ -1,9 +1,10 @@
 /*
  * Copyright(c) 2025 VEMIDaS, All rights reserved.
  */
-package jp.vemi.seasarbatis.sql.executor;
+package jp.vemi.seasarbatis.core.sql.executor;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -12,9 +13,9 @@ import org.apache.ibatis.session.SqlSessionFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import jp.vemi.seasarbatis.sql.ProcessedSql;
-import jp.vemi.seasarbatis.sql.loader.SBSqlFileLoader;
-import jp.vemi.seasarbatis.sql.processor.SBSqlProcessor;
+import jp.vemi.seasarbatis.core.sql.ProcessedSql;
+import jp.vemi.seasarbatis.core.sql.loader.SBSqlFileLoader;
+import jp.vemi.seasarbatis.core.sql.processor.SBSqlProcessor;
 
 /**
  * SQLクエリを実行するための実行クラス。
@@ -76,25 +77,30 @@ public class SBQueryExecutor {
     @SuppressWarnings("unchecked")
     private <T> T executeInternal(String sql, Map<String, Object> parameters, String commandType) {
         ProcessedSql processedSql = sqlProcessor.process(sql, parameters);
-        Map<String, Object> executionParams = processedSql.createExecutionParameters();
 
         logger.debug("Executing {} SQL: {}", commandType, processedSql);
 
         try (SqlSession session = sqlSessionFactory.openSession(false)) {
+
+            // PreparedStatement用のSQLとパラメータを使用
+            Map<String, Object> params = new HashMap<>();
+            params.put("sql", processedSql.getSql());
+            params.put("parameters", processedSql.getParameters());
+
             String statement = "prepared" + commandType; // preparedSELECT など
             Object result = null;
             switch (commandType) {
                 case "SELECT":
-                    result = session.selectList(statement, executionParams);
+                    result = session.selectList(statement, params);
                     break;
                 case "INSERT":
-                    result = session.insert(statement, executionParams);
+                    result = session.insert(statement, params);
                     break;
                 case "UPDATE":
-                    result = session.update(statement, executionParams);
+                    result = session.update(statement, params);
                     break;
                 case "DELETE":
-                    result = session.delete(statement, executionParams);
+                    result = session.delete(statement, params);
                     break;
                 default:
                     throw new IllegalArgumentException("不正なSQLコマンドタイプ: " + commandType);

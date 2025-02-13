@@ -1,42 +1,45 @@
 /*
- * Copyright(c) 2025 VEMIDaS, All rights reserved.
+ * Copyright (C) 2025 VEMI, All Rights Reserved.
  */
-package jp.vemi.seasarbatis.sql.processor;
+package jp.vemi.seasarbatis.core.sql.processor;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Stack;
-import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import jp.vemi.seasarbatis.sql.ParsedSql;
+import jp.vemi.seasarbatis.core.sql.ParsedSql;
 
 /**
- * SQLクエリの構築と処理を行うユーティリティクラス。
- * SQLファイルの読み込みと動的SQLの処理を提供します。
+ * SQLクエリの解析と変換を行うユーティリティクラス。
+ * Seasar2形式のSQLコメントを解析し、実行可能なSQLに変換します。
  * 
  * <p>
  * 主な機能：
  * <ul>
- * <li>SQLファイルの読み込み</li>
- * <li>動的SQLの処理</li>
+ * <li>動的SQLの条件判定（IF条件）</li>
  * <li>バインドパラメータの解決</li>
+ * <li>SQLの正規化</li>
  * </ul>
+ * </p>
  * 
  * <p>
  * 使用例：
  * 
  * <pre>{@code
- * String sql = SBQueryBuilder.loadSQLFromFile("queries/findUser.sql");
+ * String sql = "SELECT * FROM users WHERE &#47;*IF age != null*&#47; age > &#47;*age*&#47;20 &#47;*END*&#47;";
  * Map<String, Object> params = new HashMap<>();
- * params.put("userId", 1);
- * String processedSql = SBQueryBuilder.processSQL(sql, sqlSessionFactory, params);
+ * params.put("age", 25);
+ * ParsedSql parsedSql = SBSqlParser.parse(sql, params);
+ * // 実行結果：
+ * // SQL: SELECT * FROM users WHERE age > ?
+ * // パラメータ: [25]
  * }</pre>
  */
 public class SBSqlParser {
@@ -55,7 +58,9 @@ public class SBSqlParser {
      * SQLを解析し、バインドパラメータを解決します
      */
     public static ParsedSql parse(String sql, Map<String, Object> parameters) {
+        // IF条件の評価
         String processedSql = processIfConditions(sql, parameters);
+        // バインド変数の解決（PreparedStatement用の?に変換）
         return processBindVariables(processedSql, parameters);
     }
 
@@ -64,34 +69,31 @@ public class SBSqlParser {
      */
     protected static ParsedSql processBindVariables(String sql, Map<String, Object> parameters) {
         String processedSql = sql;
-        List<Object> paramList = new ArrayList<>();
-        Map<String, Integer> parameterPositions = new TreeMap<>();
+        List<Object> params = new ArrayList<>();
 
         for (Pattern pattern : BIND_PATTERNS) {
             Matcher m = pattern.matcher(processedSql);
             StringBuffer sb = new StringBuffer();
 
             while (m.find()) {
-                String paramName = m.group(1);
-
-                // パラメータが存在する場合のみ置換
+                String paramName = m.group(1).trim();
                 if (parameters.containsKey(paramName)) {
+                    // バインド変数を?に置換
                     m.appendReplacement(sb, "?");
-                    paramList.add(parameters.get(paramName));
-                    parameterPositions.put(paramName, paramList.size() - 1);
+                    // パラメータを順序通りに保持
+                    params.add(parameters.get(paramName));
                 }
             }
             m.appendTail(sb);
             processedSql = sb.toString();
         }
 
-        // 不要なコメントの除去と整形
+        // SQLの整形
         processedSql = cleanupSql(processedSql);
 
         return ParsedSql.builder()
                 .sql(processedSql)
-                .parameters(paramList)
-                .parameterPositions(parameterPositions)
+                .orderedParameters(params)
                 .build();
     }
 
@@ -99,9 +101,9 @@ public class SBSqlParser {
      * SQL文を整形します
      */
     private static String cleanupSql(String sql) {
-        return sql.replaceAll("/\\*BEGIN\\*/", "")
-                .replaceAll("/\\*END\\*/", "")
-                .replaceAll("\\s+", " ")
+        return sql.replaceAll("/\\*BEGIN\\*/", "") // BEGINコメントの削除
+                .replaceAll("/\\*END\\*/", "") // ENDコメントの削除
+                .replaceAll("\\s+", " ") // 連続する空白の削除
                 .trim();
     }
 

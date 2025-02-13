@@ -1,7 +1,7 @@
 /*
  * Copyright(c) 2025 VEMIDaS, All rights reserved.
  */
-package jp.vemi.seasarbatis.sql.processor;
+package jp.vemi.seasarbatis.core.sql.processor;
 
 import java.util.Map;
 
