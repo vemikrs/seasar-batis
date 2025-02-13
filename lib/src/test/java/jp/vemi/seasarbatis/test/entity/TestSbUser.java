@@ -1,7 +1,7 @@
 package jp.vemi.seasarbatis.test.entity;
 
-import jp.vemi.seasarbatis.meta.SBColumnMeta;
-import jp.vemi.seasarbatis.meta.SBTableMeta;
+import jp.vemi.seasarbatis.core.meta.SBColumnMeta;
+import jp.vemi.seasarbatis.core.meta.SBTableMeta;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

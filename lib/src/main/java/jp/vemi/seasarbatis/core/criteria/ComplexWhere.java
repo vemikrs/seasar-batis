@@ -1,7 +1,7 @@
 /*
  * Copyright(c) 2025 VEMIDaS, All rights reserved.
  */
-package jp.vemi.seasarbatis.criteria;
+package jp.vemi.seasarbatis.core.criteria;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;

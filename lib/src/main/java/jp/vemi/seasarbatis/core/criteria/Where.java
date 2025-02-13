@@ -1,4 +1,4 @@
-package jp.vemi.seasarbatis.criteria;
+package jp.vemi.seasarbatis.core.criteria;
 
 import java.util.Map;
 

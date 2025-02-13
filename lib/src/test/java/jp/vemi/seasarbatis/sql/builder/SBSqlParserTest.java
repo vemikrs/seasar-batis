@@ -14,8 +14,8 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 import jp.vemi.seasarbatis.sql.ParsedSql;
-import jp.vemi.seasarbatis.sql.SBSqlFileLoader;
-import jp.vemi.seasarbatis.sql.SBSqlParser;
+import jp.vemi.seasarbatis.sql.loader.SBSqlFileLoader;
+import jp.vemi.seasarbatis.sql.processor.SBSqlParser;
 
 class SBSqlParserTest {
 

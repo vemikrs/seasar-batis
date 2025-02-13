@@ -1,12 +1,16 @@
 /*
  * Copyright(c) 2025 VEMIDaS, All rights reserved.
  */
-package jp.vemi.seasarbatis.sql;
+package jp.vemi.seasarbatis.sql.processor;
 
 import java.io.IOException;
 import java.util.Map;
 
 import org.apache.ibatis.session.SqlSessionFactory;
+
+import jp.vemi.seasarbatis.sql.ParsedSql;
+import jp.vemi.seasarbatis.sql.ProcessedSql;
+import jp.vemi.seasarbatis.sql.loader.SBSqlFileLoader;
 
 /**
  * SQLを解析するクラスです。

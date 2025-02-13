@@ -16,14 +16,14 @@ import org.apache.ibatis.session.SqlSessionFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import jp.vemi.seasarbatis.criteria.ComplexWhere;
-import jp.vemi.seasarbatis.criteria.SimpleWhere;
-import jp.vemi.seasarbatis.criteria.Where;
+import jp.vemi.seasarbatis.core.criteria.ComplexWhere;
+import jp.vemi.seasarbatis.core.criteria.SimpleWhere;
+import jp.vemi.seasarbatis.core.criteria.Where;
+import jp.vemi.seasarbatis.core.meta.SBColumnMeta;
+import jp.vemi.seasarbatis.core.meta.SBTableMeta;
 import jp.vemi.seasarbatis.jdbc.selector.From;
 import jp.vemi.seasarbatis.jdbc.updater.UpdateBuilder;
-import jp.vemi.seasarbatis.meta.SBColumnMeta;
-import jp.vemi.seasarbatis.meta.SBTableMeta;
-import jp.vemi.seasarbatis.sql.SBQueryExecutor;
+import jp.vemi.seasarbatis.sql.executor.SBQueryExecutor;
 import jp.vemi.seasarbatis.util.SBEntityClassUtils;
 
 /**

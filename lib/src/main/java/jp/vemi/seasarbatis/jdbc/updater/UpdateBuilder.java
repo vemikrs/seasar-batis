@@ -3,7 +3,7 @@ package jp.vemi.seasarbatis.jdbc.updater;
 import java.util.HashMap;
 import java.util.Map;
 
-import jp.vemi.seasarbatis.criteria.Where;
+import jp.vemi.seasarbatis.core.criteria.Where;
 import jp.vemi.seasarbatis.jdbc.SBJdbcManager;
 
 /**

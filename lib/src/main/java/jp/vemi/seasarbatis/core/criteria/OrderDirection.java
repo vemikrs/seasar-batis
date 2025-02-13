@@ -1,4 +1,4 @@
-package jp.vemi.seasarbatis.criteria;
+package jp.vemi.seasarbatis.core.criteria;
 
 /**
  * ORDER BY句のソート方向を表す列挙型。

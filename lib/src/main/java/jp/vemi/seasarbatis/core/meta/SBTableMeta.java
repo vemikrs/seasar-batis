@@ -1,7 +1,7 @@
 /*
  * Copyright(c) 2025 VEMIDaS, All rights reserved.
  */
-package jp.vemi.seasarbatis.meta;
+package jp.vemi.seasarbatis.core.meta;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

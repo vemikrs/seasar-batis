@@ -1,7 +1,7 @@
 /*
  * Copyright(c) 2025 VEMIDaS, All rights reserved.
  */
-package jp.vemi.seasarbatis.sql;
+package jp.vemi.seasarbatis.sql.processor;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -14,6 +14,8 @@ import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import jp.vemi.seasarbatis.sql.ParsedSql;
 
 /**
  * SQLクエリの構築と処理を行うユーティリティクラス。

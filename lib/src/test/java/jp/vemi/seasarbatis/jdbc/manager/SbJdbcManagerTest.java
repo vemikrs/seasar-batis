@@ -17,10 +17,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import jp.vemi.seasarbatis.criteria.SimpleWhere;
+import jp.vemi.seasarbatis.core.criteria.OrderDirection;
+import jp.vemi.seasarbatis.core.criteria.SimpleWhere;
 import jp.vemi.seasarbatis.jdbc.SBJdbcManager;
 import jp.vemi.seasarbatis.test.entity.TestSbUser;
-import jp.vemi.seasarbatis.criteria.OrderDirection;
 
 @ExtendWith(MockitoExtension.class)
 class SbJdbcManagerTest {

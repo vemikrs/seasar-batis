@@ -8,7 +8,7 @@ import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.Map;
 
-import jp.vemi.seasarbatis.meta.SBColumnMeta;
+import jp.vemi.seasarbatis.core.meta.SBColumnMeta;
 
 public class SBEntityClassUtils {
 
