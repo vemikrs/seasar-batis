@@ -38,9 +38,13 @@ import jp.vemi.seasarbatis.core.sql.ParsedSql;
  * params.put("age", 25);
  * ParsedSql parsedSql = SBSqlParser.parse(sql, params);
  * // 実行結果：
- * // SQL: SELECT * FROM users WHERE age > ?
+ * // SQL: SELECT * FROM users WHERE age > #{age}
  * // パラメータ: [25]
  * }</pre>
+ * </p>
+ * 
+ * @author H.Kurosawa
+ * @version 1.0.0
  */
 public class SBSqlParser {
     private static final Logger logger = LoggerFactory.getLogger(SBSqlParser.class);
@@ -55,21 +59,37 @@ public class SBSqlParser {
     );
 
     /**
-     * SQLを解析し、バインドパラメータを解決します
+     * SQLを解析し、バインドパラメータを解決します。
+     * <p>
+     * IF条件を評価した後、Seasar2形式のSQLコメントで記述されたバインド変数を
+     * MyBatis形式の「#{paramName}」に書き換えます。<br>
+     * 変換された順序でパラメータはリストとして保持されます。
+     * </p>
+     *
+     * @param sql        解析対象のSQL文
+     * @param parameters バインドパラメータ
+     * @return 処理済みのSQL文と順序付けられたパラメータを保持するParsedSqlオブジェクト
      */
     public static ParsedSql parse(String sql, Map<String, Object> parameters) {
         // IF条件の評価
         String processedSql = processIfConditions(sql, parameters);
-        // バインド変数の解決（PreparedStatement用の?に変換）
+        // バインド変数の解決（MyBatis形式への置換）
         return processBindVariables(processedSql, parameters);
     }
 
     /**
-     * バインド変数を解決します
+     * バインド変数を解決します。<br>
+     * Seasar2形式のバインド変数（パターン1～パターン5）をサポートし、<br>
+     * 置換された順序で変数のリストをorderedParametersに追加します。<br>
+     * この実装では、PreparedStatement用の「?」ではなく、MyBatis形式の「#{paramName}」に置換します。
+     *
+     * @param sql        SQL文
+     * @param parameters バインドパラメータ
+     * @return 処理済みのSQL文と順序付けられたパラメータを保持するParsedSqlオブジェクト
      */
     protected static ParsedSql processBindVariables(String sql, Map<String, Object> parameters) {
         String processedSql = sql;
-        List<Object> params = new ArrayList<>();
+        List<Object> orderedParams = new ArrayList<>();
 
         for (Pattern pattern : BIND_PATTERNS) {
             Matcher m = pattern.matcher(processedSql);
@@ -78,104 +98,33 @@ public class SBSqlParser {
             while (m.find()) {
                 String paramName = m.group(1).trim();
                 if (parameters.containsKey(paramName)) {
-                    // バインド変数を?に置換
-                    m.appendReplacement(sb, "?");
+                    // MyBatis形式のバインド変数に置換
+                    m.appendReplacement(sb, "#{" + paramName + "}");
                     // パラメータを順序通りに保持
-                    params.add(parameters.get(paramName));
+                    orderedParams.add(parameters.get(paramName));
                 }
             }
             m.appendTail(sb);
             processedSql = sb.toString();
         }
 
-        // SQLの整形
+        // SQL文の整形
         processedSql = cleanupSql(processedSql);
 
         return ParsedSql.builder()
                 .sql(processedSql)
-                .orderedParameters(params)
                 .build();
     }
 
     /**
-     * SQL文を整形します
-     */
-    private static String cleanupSql(String sql) {
-        return sql.replaceAll("/\\*BEGIN\\*/", "") // BEGINコメントの削除
-                .replaceAll("/\\*END\\*/", "") // ENDコメントの削除
-                .replaceAll("\\s+", " ") // 連続する空白の削除
-                .trim();
-    }
-
-    /**
-     * SQL文を処理し、バインドパラメータを解決します。
-     * Seasar2形式のバインド変数（パターン1～パターン5）をサポートし、
-     * 置換された順序で変数のリストをparamListに追加します。
-     *
-     * @param sql        SQL文
-     * @param parameters バインドパラメータ
-     * @param paramList  パラメータリスト（呼び出し側で用意）
-     * @return 処理済みのSQL文（プレースホルダに「?」が設定された状態）
-     * @deprecated {@link #parse(String, Map)} を使用して下さい。
-     */
-    public static String processSQL(String sql, Map<String, Object> parameters, List<Object> paramList) {
-        if (parameters == null || parameters.isEmpty()) {
-            return sql;
-        }
-
-        // IF条件の評価
-        String processedSql = processIfConditions(sql, parameters);
-        logger.trace("After IF processing: {}", processedSql);
-
-        // 各バインド変数ごとに処理を行う
-        for (Map.Entry<String, Object> entry : parameters.entrySet()) {
-            String paramName = entry.getKey();
-            Object value = entry.getValue();
-
-            // 各パターンで置換とパラメータの抽出を実施する
-            String[] patterns = new String[] {
-                    // パターン1: クォートで囲まれた値
-                    "/\\*\\s*" + paramName + "\\s*\\*/['\"][^'\"]*['\"]",
-                    // パターン2: 数値リテラル
-                    "/\\*\\s*" + paramName + "\\s*\\*/-?[0-9.]+",
-                    // パターン3: IN句のリスト
-                    "/\\*\\s*" + paramName + "\\s*\\*/\\s*\\([^)]*\\)",
-                    // パターン4: LIKEパターン
-                    "/\\*\\s*" + paramName + "\\s*\\*/\\s*['\"][%_]*[^'\"]*[%_]*['\"]",
-                    // パターン5: NULL値
-                    "/\\*\\s*" + paramName + "\\s*\\*/\\s*null"
-            };
-
-            for (String pattern : patterns) {
-                Pattern p = Pattern.compile(pattern, Pattern.CASE_INSENSITIVE);
-                Matcher m = p.matcher(processedSql);
-                StringBuffer sb = new StringBuffer();
-                // マッチした箇所ごとに「?」に置換し、置換順にparamListへ値を追加
-                while (m.find()) {
-                    m.appendReplacement(sb, "?");
-                    paramList.add(value);
-                }
-                m.appendTail(sb);
-                processedSql = sb.toString();
-            }
-        }
-
-        // 不要なコメントの除去と整形
-        processedSql = processedSql.replaceAll("/\\*BEGIN\\*/", "")
-                .replaceAll("/\\*END\\*/", "")
-                .replaceAll("\\s+", " ")
-                .trim();
-        logger.info("Final SQL: {}", processedSql);
-        return processedSql;
-    }
-
-    /**
      * IF条件を評価します。
+     * <p>
      * ネストされた条件とBEGIN/ENDブロックをサポートします。
+     * </p>
      *
      * @param sql        SQLクエリ文字列
      * @param parameters バインドパラメータ
-     * @return 処理済みのSQL文字列
+     * @return IF条件の評価結果を反映したSQL文字列
      */
     protected static String processIfConditions(String sql, Map<String, Object> parameters) {
         StringBuilder result = new StringBuilder();
@@ -231,6 +180,9 @@ public class SBSqlParser {
 
     /**
      * 条件式を抽出します。
+     *
+     * @param line 条件式を含む行
+     * @return 抽出された条件式
      */
     protected static String extractCondition(String line) {
         int start = line.indexOf("/*IF") + 4;
@@ -240,7 +192,13 @@ public class SBSqlParser {
 
     /**
      * 条件式を評価します。
+     * <p>
      * AND/OR演算子をサポートします。
+     * </p>
+     *
+     * @param condition  条件式文字列
+     * @param parameters バインドパラメータ
+     * @return 条件式の評価結果
      */
     protected static boolean evaluateCondition(String condition, Map<String, Object> parameters) {
         if (condition.contains(" AND ")) {
@@ -254,6 +212,22 @@ public class SBSqlParser {
                     .anyMatch(c -> evaluateSingleCondition(c.trim(), parameters));
         }
         return evaluateSingleCondition(condition, parameters);
+    }
+
+    /**
+     * SQL文を整形します。
+     * <p>
+     * 不要なコメントの削除、連続する空白の除去などを行います。
+     * </p>
+     *
+     * @param sql 整形対象のSQL文
+     * @return 整形されたSQL文
+     */
+    protected static String cleanupSql(String sql) {
+        return sql.replaceAll("/\\*BEGIN\\*/", "") // BEGINコメントの削除
+                .replaceAll("/\\*END\\*/", "") // ENDコメントの削除
+                .replaceAll("\\s+", " ") // 連続する空白の削除
+                .trim();
     }
 
     private static boolean evaluateSingleCondition(String condition, Map<String, Object> parameters) {

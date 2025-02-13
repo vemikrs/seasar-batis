@@ -42,7 +42,6 @@ public class SBSqlProcessor {
         // 3. 解析結果と実行用パラメータを保持したオブジェクトを返す
         return ProcessedSql.builder()
                 .sql(processedSql)
-                .params(parsedSql.getOrderedParameters())
                 .build();
     }
 

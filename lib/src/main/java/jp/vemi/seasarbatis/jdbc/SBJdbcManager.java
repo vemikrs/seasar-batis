@@ -3,10 +3,15 @@
  */
 package jp.vemi.seasarbatis.jdbc;
 
+import static jp.vemi.seasarbatis.core.sql.CommandType.DELETE;
+import static jp.vemi.seasarbatis.core.sql.CommandType.INSERT;
+import static jp.vemi.seasarbatis.core.sql.CommandType.SELECT;
+import static jp.vemi.seasarbatis.core.sql.CommandType.UPDATE;
+
 import java.lang.reflect.Field;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -24,7 +29,6 @@ import jp.vemi.seasarbatis.core.criteria.SimpleWhere;
 import jp.vemi.seasarbatis.core.meta.SBColumnMeta;
 import jp.vemi.seasarbatis.core.meta.SBTableMeta;
 import jp.vemi.seasarbatis.core.sql.executor.SBQueryExecutor;
-import jp.vemi.seasarbatis.util.SBEntityClassUtils;
 
 /**
  * JDBC操作を簡素化するマネージャークラス。
@@ -49,39 +53,47 @@ public class SBJdbcManager {
     /**
      * SQL文に基づいて検索を実行します。
      * 
-     * @param <T>    戻り値の要素型
-     * @param sql    SQL文
-     * @param params パラメータ
+     * @param <T>        戻り値の要素型
+     * @param sql        SQL文
+     * @param params     パラメータ
+     * @param resultType 結果のマッピング先クラス
      * @return 検索結果のリスト
      */
-    public <T> List<T> selectBySql(String sql, Map<String, Object> params) {
-        return queryExecutor.select(sql, params);
+    public <T> Select<T> selectBySql(String sql, Map<String, Object> params, Class<T> resultType) {
+        return this.<T>select()
+                .from(resultType)
+                .withSql(sql)
+                .withParams(params);
     }
 
     /**
      * SQLファイルに基づいて検索を実行します。
      * 
-     * @param <T>     戻り値の要素型
-     * @param sqlFile SQLファイルのパス
-     * @param params  パラメータ
+     * @param <T>        戻り値の要素型
+     * @param sqlFile    SQLファイルのパス
+     * @param params     パラメータ
+     * @param resultType 結果のマッピング先クラス
      * @return 検索結果のリスト
      */
-    public <T> List<T> selectBySqlFile(String sqlFile, Map<String, Object> params) {
-        return queryExecutor.executeFile(sqlFile, params, "SELECT");
+    public <T> Select<T> selectBySqlFile(String sqlFile, Map<String, Object> params, Class<T> resultType) {
+        return this.<T>select()
+                .from(resultType)
+                .withSqlFile(sqlFile)
+                .withParams(params);
     }
 
     /**
      * INSERT文を実行します。
      */
     public int insert(String sql, Map<String, Object> params) {
-        return queryExecutor.execute(sql, params, "INSERT");
+        return queryExecutor.execute(sql, params, INSERT);
     }
 
     /**
      * SQLファイルからINSERT文を実行します。
      */
     public int insertBySqlFile(String sqlFile, Map<String, Object> params) {
-        return queryExecutor.executeFile(sqlFile, params, "INSERT");
+        return queryExecutor.executeFile(sqlFile, params, INSERT);
     }
 
     /**
@@ -92,79 +104,60 @@ public class SBJdbcManager {
      * @return 更新された行数
      */
     public int update(String sql, Map<String, Object> params) {
-        return queryExecutor.update(sql, params);
+        return queryExecutor.execute(sql, params, UPDATE);
     }
 
     /**
      * SQLファイルからUPDATE文を実行します。
      */
     public int updateBySqlFile(String sqlFile, Map<String, Object> params) {
-        return queryExecutor.executeFile(sqlFile, params, "UPDATE");
+        return queryExecutor.executeFile(sqlFile, params, UPDATE);
     }
 
     /**
      * DELETE文を実行します。
      */
     public int delete(String sql, Map<String, Object> params) {
-        return queryExecutor.execute(sql, params, "DELETE");
+        return queryExecutor.execute(sql, params, DELETE);
     }
 
     /**
      * SQLファイルからDELETE文を実行します。
      */
     public int deleteBySqlFile(String sqlFile, Map<String, Object> params) {
-        return queryExecutor.executeFile(sqlFile, params, "DELETE");
+        return queryExecutor.executeFile(sqlFile, params, DELETE);
     }
 
     // ---------- エンティティ操作 ----------
     /**
-     * 主キーに基づいてエンティティを検索します。（例外をスローしない）
+     * 主キーに基づいてエンティティを検索します。
      * 
-     * @param <T>         エンティティの型
-     * @param entityClass エンティティのクラス
-     * @param primaryKeys 主キーの値（複数可）
+     * @param <T>    エンティティの型
+     * @param entity 検索対象のPK情報を含むエンティティ
      * @return 検索されたエンティティ、存在しない場合はnull
      * @throws IllegalArgumentException 指定された主キーの数が不正な場合
      */
-    public <T> T findByPkNoException(Class<T> entityClass, Object... primaryKeys) {
-        PrimaryKeyInfo pkInfo = getPrimaryKeyInfo(entityClass);
-        if (primaryKeys.length != pkInfo.columnNames.size()) {
-            throw new IllegalArgumentException(
-                    String.format("主キーの数が一致しません。期待値: %d, 実際: %d",
-                            pkInfo.columnNames.size(), primaryKeys.length));
-        }
-
-        String tableName = getTableName(entityClass);
-        StringBuilder sql = new StringBuilder("SELECT * FROM " + tableName + " WHERE ");
-
-        Map<String, Object> params = new LinkedHashMap<>();
-        for (int i = 0; i < primaryKeys.length; i++) {
-            if (i > 0)
-                sql.append(" AND ");
-            sql.append(pkInfo.columnNames.get(i))
-                    .append(" = /*pk").append(i).append("*/0");
-            params.put("pk" + i, primaryKeys[i]);
-        }
-
-        List<Map<String, Object>> results = queryExecutor.select(sql.toString(), params);
-        return results.isEmpty() ? null : SBEntityClassUtils.mapToEntity(entityClass, results.get(0));
+    @SuppressWarnings("unchecked")
+    public <T> Select<T> findByPk(T entity) {
+        return this.<T>select()
+                .from((Class<T>) entity.getClass())
+                .byPrimaryKey(getPrimaryKeyValues(entity));
     }
 
     /**
-     * 主キーに基づいてエンティティを検索します。
+     * 主キーに基づいてエンティティを検索します。（例外をスローしない）
      * 
-     * @param <T>         エンティティの型
-     * @param entityClass エンティティのクラス
-     * @param primaryKeys 主キーの値（複数可）
+     * @param <T>    エンティティの型
+     * @param entity 検索対象のPK情報を含むエンティティ
      * @return 検索されたエンティティ、存在しない場合はnull
      * @throws IllegalArgumentException 指定された主キーの数が不正な場合
      */
-    public <T> T findByPk(Class<T> entityClass, Object... primaryKeys) {
-        T entity = findByPkNoException(entityClass, primaryKeys);
-        if (entity == null) {
-            throw new IllegalArgumentException("エンティティが見つかりません: " + entityClass.getName());
-        }
-        return entity;
+    @SuppressWarnings("unchecked")
+    public <T> Select<T> findByPkNoException(T entity) {
+        return this.<T>select()
+                .from((Class<T>) entity.getClass())
+                .byPrimaryKey(getPrimaryKeyValues(entity))
+                .suppressException();
     }
 
     /**
@@ -175,15 +168,7 @@ public class SBJdbcManager {
      * @return エンティティのリスト
      */
     public <T> List<T> findAll(Class<T> entityClass) {
-        String tableName = getTableName(entityClass);
-        String sql = "SELECT * FROM " + tableName;
-        List<Map<String, Object>> result = queryExecutor.select(sql, new HashMap<>());
-        if (result == null) {
-            return java.util.Collections.emptyList();
-        }
-        return result.stream()
-                .map(row -> SBEntityClassUtils.mapToEntity(entityClass, row))
-                .collect(Collectors.toList());
+        return this.<T>select().from(entityClass).getResultList();
     }
 
     /**
@@ -209,8 +194,10 @@ public class SBJdbcManager {
         values.setLength(values.length() - 2);
         sql.append(values).append(")");
 
-        queryExecutor.execute(sql.toString(), params, "INSERT");
-        return entity;
+        queryExecutor.execute(sql.toString(), params, INSERT);
+
+        T newEntity = findByPk(entity).getSingleResult();
+        return newEntity;
     }
 
     /**
@@ -257,7 +244,7 @@ public class SBJdbcManager {
             params.put("pk" + pkCount, pk.getValue());
         }
 
-        queryExecutor.execute(sql.toString(), params, "UPDATE");
+        queryExecutor.execute(sql.toString(), params, UPDATE);
         return entity;
     }
 
@@ -289,7 +276,7 @@ public class SBJdbcManager {
             params.put("pk" + i, primaryKeys[i]);
         }
 
-        queryExecutor.execute(sql.toString(), params, "DELETE");
+        queryExecutor.execute(sql.toString(), params, DELETE);
     }
 
     /**
@@ -325,7 +312,7 @@ public class SBJdbcManager {
             params.put("pk" + pkCount, pk.getValue());
         }
 
-        List<Map<String, Object>> result = queryExecutor.select(sql.toString(), params);
+        List<Map<String, Object>> result = queryExecutor.execute(sql.toString(), params, SELECT);
         long count = ((Number) result.get(0).values().iterator().next()).longValue();
 
         if (count > 0) {
@@ -478,6 +465,113 @@ public class SBJdbcManager {
      */
     public interface TransactionCallback {
         void execute(SBJdbcManager manager) throws Exception;
+    }
+
+    /**
+     * 型安全な検索クエリを開始します
+     * 
+     * @param <T> エンティティの型
+     * @return 型安全な検索ビルダー
+     */
+    public <T> Select<T> select() {
+        return new Select<>(this);
+    }
+
+    // Selectクラス
+    public class Select<T> {
+        @SuppressWarnings("unused")
+        private final SBJdbcManager jdbcManager;
+        private Class<T> entityClass;
+        private String sql;
+        private String sqlFile;
+        private Map<String, Object> params = new HashMap<>();
+        private Map<String, Object> primaryKeys;
+        private boolean suppressException;
+
+        private Select(SBJdbcManager jdbcManager) {
+            this.jdbcManager = jdbcManager;
+        }
+
+        public Select<T> from(Class<T> entityClass) {
+            this.entityClass = entityClass;
+            return this;
+        }
+
+        public Select<T> withSql(String sql) {
+            this.sql = sql;
+            return this;
+        }
+
+        public Select<T> withSqlFile(String sqlFile) {
+            this.sqlFile = sqlFile;
+            return this;
+        }
+
+        public Select<T> withParams(Map<String, Object> params) {
+            this.params.putAll(params);
+            return this;
+        }
+
+        public Select<T> byPrimaryKey(Map<String, Object> primaryKeys) {
+            this.primaryKeys = primaryKeys;
+            return this;
+        }
+
+        public Select<T> suppressException() {
+            this.suppressException = true;
+            return this;
+        }
+
+        public T getSingleResult() {
+            List<T> results = getResultList();
+            if (results.isEmpty()) {
+                if (!suppressException) {
+                    throw new IllegalStateException("結果が見つかりません");
+                }
+                return null;
+            }
+            if (results.size() > 1) {
+                throw new IllegalStateException("複数の結果が見つかりました");
+            }
+            return results.get(0);
+        }
+
+        public List<T> getResultList() {
+            try {
+                if (sql != null) {
+                    return queryExecutor.executeSelect(sql, params, entityClass);
+                } else if (sqlFile != null) {
+                    return queryExecutor.executeFile(sqlFile, params, SELECT);
+                } else if (primaryKeys != null) {
+                    // 主キーによる検索のロジック
+                    PrimaryKeyInfo pkInfo = getPrimaryKeyInfo(entityClass);
+                    String tableName = getTableName(entityClass);
+                    StringBuilder sqlBuilder = new StringBuilder("SELECT * FROM " + tableName + " WHERE ");
+
+                    for (int i = 0; i < primaryKeys.size(); i++) {
+                        if (i > 0) {
+                            sqlBuilder.append(" AND ");
+                        }
+                        String propertyName = pkInfo.columnNames.get(i);
+                        sqlBuilder.append(propertyName)
+                                .append(" = /*pk").append(i).append("*/").append(i);
+                        params.put("pk" + i, primaryKeys.get(propertyName));
+                    }
+
+                    return queryExecutor.executeSelect(sqlBuilder.toString(), params, entityClass);
+                } else {
+                    // 全件検索
+                    String tableName = getTableName(entityClass);
+                    return queryExecutor.executeSelect("SELECT * FROM " + tableName, params, entityClass);
+                }
+            } catch (Exception e) {
+                if (suppressException) {
+                    logger.warn("検索実行中の例外を抑制: {}", e.getMessage());
+                    return Collections.emptyList();
+                }
+                throw new RuntimeException("検索実行中にエラーが発生しました", e);
+            }
+        }
     }
 
     private static class PrimaryKeyInfo {

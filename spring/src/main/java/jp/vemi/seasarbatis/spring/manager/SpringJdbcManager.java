@@ -26,8 +26,8 @@ public class SpringJdbcManager extends SBJdbcManager {
 
     @Override
     @Transactional(readOnly = true)
-    public <T> T findByPk(Class<T> entityClass, Object... primaryKeys) {
-        return super.findByPk(entityClass, primaryKeys);
+    public <T> Select<T> findByPk(T entity) {
+        return super.findByPk(entity);
     }
 
     @Override

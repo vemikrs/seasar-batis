@@ -1,37 +1,219 @@
 /*
- * Copyright(c) 2025 VEMIDaS, All rights reserved.
+ * Copyright (C) 2025 VEMI, All Rights Reserved.
  */
 package jp.vemi.seasarbatis.core.sql.processor;
 
+import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Date;
+import java.util.List;
 import java.util.Map;
+import java.util.ServiceLoader;
+import java.util.regex.Matcher;
+import java.util.stream.Collectors;
 
-import org.apache.ibatis.mapping.BoundSql;
 import org.apache.ibatis.mapping.MappedStatement;
+import org.apache.ibatis.mapping.ParameterMapping;
 import org.apache.ibatis.mapping.SqlCommandType;
-import org.apache.ibatis.mapping.SqlSource;
 import org.apache.ibatis.scripting.xmltags.DynamicSqlSource;
 import org.apache.ibatis.scripting.xmltags.TextSqlNode;
+import org.apache.ibatis.session.Configuration;
 import org.apache.ibatis.session.SqlSessionFactory;
 
 /**
- * MyBatisの機能を使用してSQLを処理します
+ * MyBatisの機能を使用してSQLを処理し、パラメータの値を埋め込んだSQL文字列を返します。
+ * <p>
+ * このクラスは、MyBatisのSQL（例：SELECT * FROM sbtest_users WHERE id = #{id}）から、
+ * バインド変数に値を代入した実行SQLに変換します。置換後は、バインド変数部分が実際の値となります。
+ * 例えば、SQL「SELECT * FROM sbtest_users WHERE id = #{id}」に対し、
+ * パラメータ {@code id=1} を指定すると、実行SQLは「SELECT * FROM sbtest_users WHERE id =
+ * 1」となります。
+ * </p>
+ *
+ * @author H.Kurosawa
+ * @version 1.0.0
+ * @since 2025/01/01
  */
 public class SBMyBatisSqlProcessor {
+
     /**
-     * MyBatisの機能を使用してSQLを処理します
+     * SQLを処理します。
+     *
+     * @param sql               SQL文
+     * @param sqlSessionFactory MyBatis用 SqlSessionFactory
+     * @param parameters        バインドパラメータ
+     * @return バインド変数に値が代入されたSQL文字列
      */
     public static String process(String sql, SqlSessionFactory sqlSessionFactory, Map<String, Object> parameters) {
-        SqlSource sqlSource = new DynamicSqlSource(
-                sqlSessionFactory.getConfiguration(),
-                new TextSqlNode(sql));
-        MappedStatement ms = new MappedStatement.Builder(
-                sqlSessionFactory.getConfiguration(),
-                "dynamicSQL",
-                sqlSource,
-                SqlCommandType.SELECT).build();
 
-        BoundSql boundSql = ms.getBoundSql(parameters);
-        return boundSql.getSql();
+        Configuration configuration = sqlSessionFactory.getConfiguration();
+        List<ParameterMapping> parameterMappings = getParameterMappings(configuration, sql);
+
+        String sqlWithPlaceholders = sql;
+
+        // プレースホルダをパラメータの値に置換
+        Dialect dialect = loadDialect();
+        for (ParameterMapping mapping : parameterMappings) {
+            Object value = parameters.get(mapping.getProperty());
+            String replacement = formatParameter(value, dialect);
+            // MyBatisのプレースホルダをエスケープして1回分の置換を実施
+            String property = "\\#\\{" + mapping.getProperty() + "\\}";
+            sqlWithPlaceholders = sqlWithPlaceholders.replaceFirst(property, Matcher.quoteReplacement(replacement));
+        }
+        return sqlWithPlaceholders;
     }
 
+    /**
+     * パラメータマッピングを取得します。
+     *
+     * @param configuration MyBatis設定
+     * @param sql               SQL文
+     * @return パラメータマッピングリスト
+     */
+    private static List<ParameterMapping> getParameterMappings(Configuration configuration, String sql) {
+        DynamicSqlSource sqlSource = new DynamicSqlSource(configuration, new TextSqlNode(sql));
+        // ダミーのMappedStatementを生成
+        MappedStatement ms = new MappedStatement.Builder(configuration, "dummy", sqlSource, SqlCommandType.SELECT)
+                .build();
+        return ms.getBoundSql(null).getParameterMappings();
+    }
+
+    /**
+     * パラメータ値をSQL挿入用の文字列に変換します。
+     * <p>
+     * 文字列の場合はシングルクォートで囲み、必要に応じてエスケープ処理を行います。
+     * 日付型（java.util.Date、java.time.LocalDate、java.time.LocalDateTime）については、
+     * 標準的なフォーマットで文字列に変換し、シングルクォートで囲みます。
+     * </p>
+     *
+     * @param value   パラメータ値
+     * @param dialect SQLの方言
+     * @return SQLに埋め込む形式の文字列
+     */
+    private static String formatParameter(Object value, Dialect dialect) {
+        if (value == null) {
+            return "null";
+        }
+        if (value instanceof String) {
+            // 文字列をエスケープ
+            String escapedValue = escapeSql(value.toString(), dialect);
+            // シングルクォートで囲んでエスケープ
+            return dialect != null ? dialect.escapeString(escapedValue) : "'" + escapedValue + "'";
+        }
+        if (value instanceof Date) {
+            // java.util.Date を yyyy-MM-dd HH:mm:ss 形式でフォーマット
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            String formattedValue = sdf.format((Date) value);
+            return dialect != null ? dialect.formatDate(formattedValue) : "'" + formattedValue + "'";
+        }
+        if (value instanceof LocalDate) {
+            // java.time.LocalDate を ISO_LOCAL_DATE 形式 (yyyy-MM-dd) でフォーマット
+            DateTimeFormatter dtf = DateTimeFormatter.ISO_LOCAL_DATE;
+            String formattedValue = ((LocalDate) value).format(dtf);
+            return dialect != null ? dialect.formatLocalDate(formattedValue) : "'" + formattedValue + "'";
+        }
+        if (value instanceof LocalDateTime) {
+            // java.time.LocalDateTime を yyyy-MM-dd HH:mm:ss 形式でフォーマット
+            DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+            String formattedValue = ((LocalDateTime) value).format(dtf);
+            return dialect != null ? dialect.formatLocalDateTime(formattedValue) : "'" + formattedValue + "'";
+        }
+        if (value instanceof Number) {
+            // 数値型はそのまま文字列に変換
+            return value.toString();
+        }
+        if (value instanceof Boolean) {
+            // Boolean型はtrueまたはfalseを文字列に変換
+            return value.toString();
+        }
+        if (value.getClass().isArray()) {
+            // 配列の場合、各要素をフォーマットしてカンマ区切りで連結
+            String formattedValue = Arrays.stream((Object[]) value)
+                    .map(v -> formatParameter(v, dialect))
+                    .collect(Collectors.joining(", "));
+            return "(" + formattedValue + ")";
+        }
+        if (value instanceof Collection) {
+            // Collectionの場合、各要素をフォーマットしてカンマ区切りで連結
+            String formattedValue = ((Collection<?>) value).stream()
+                    .map(v -> formatParameter(v, dialect))
+                    .collect(Collectors.joining(", "));
+            return "(" + formattedValue + ")";
+        }
+        // 上記以外の型はtoString()で変換
+        return value.toString();
+    }
+
+    /**
+     * SQLインジェクション対策のエスケープ処理を行います。
+     *
+     * @param value   エスケープする文字列
+     * @param dialect SQLの方言
+     * @return エスケープされた文字列
+     */
+    private static String escapeSql(String value, Dialect dialect) {
+        if (value == null || value.isEmpty()) {
+            return value;
+        }
+
+        if (dialect != null) {
+            return dialect.escapeString(value);
+        }
+
+        // デフォルトのエスケープ処理
+        String escapedValue = value.replace("'", "''");
+        escapedValue = escapedValue.replace("\\", "\\\\");
+        return escapedValue;
+    }
+
+    /**
+     * データベースの方言をロードします。
+     *
+     * @return データベースの方言
+     */
+    private static Dialect loadDialect() {
+        ServiceLoader<Dialect> loader = ServiceLoader.load(Dialect.class);
+        return loader.findFirst().orElse(null);
+    }
+
+    /**
+     * SQLの方言インターフェース
+     */
+    public interface Dialect {
+        /**
+         * 文字列をエスケープします。
+         *
+         * @param value エスケープする文字列
+         * @return エスケープされた文字列
+         */
+        String escapeString(String value);
+
+        /**
+         * 日付をフォーマットします。
+         *
+         * @param value フォーマットする日付
+         * @return フォーマットされた日付
+         */
+        String formatDate(String value);
+
+        /**
+         * LocalDateをフォーマットします。
+         *
+         * @param value フォーマットするLocalDate
+         * @return フォーマットされたLocalDate
+         */
+        String formatLocalDate(String value);
+
+        /**
+         * LocalDateTimeをフォーマットします。
+         *
+         * @param value フォーマットするLocalDateTime
+         * @return フォーマットされたLocalDateTime
+         */
+        String formatLocalDateTime(String value);
+    }
 }
