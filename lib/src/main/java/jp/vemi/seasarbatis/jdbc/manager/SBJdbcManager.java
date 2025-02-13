@@ -23,7 +23,7 @@ import jp.vemi.seasarbatis.jdbc.selector.From;
 import jp.vemi.seasarbatis.jdbc.updater.UpdateBuilder;
 import jp.vemi.seasarbatis.meta.SBColumnMeta;
 import jp.vemi.seasarbatis.meta.SBTableMeta;
-import jp.vemi.seasarbatis.sql.executor.SBQueryExecutor;
+import jp.vemi.seasarbatis.sql.SBQueryExecutor;
 import jp.vemi.seasarbatis.util.SBEntityClassUtils;
 
 /**

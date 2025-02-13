@@ -3,13 +3,8 @@
  */
 package jp.vemi.seasarbatis.core.mapping;
 
-import java.io.IOException;
-import java.util.Map;
-
 import org.apache.ibatis.session.SqlSession;
 import org.apache.ibatis.session.SqlSessionFactory;
-
-import jp.vemi.seasarbatis.sql.builder.SBQueryBuilder;
 
 /**
  * MyBatisのマッパーインターフェースを管理するジェネリッククラス。
@@ -42,15 +37,6 @@ public class SBMyBatisMapper<T> {
     public T getMapper() {
         try (SqlSession session = sqlSessionFactory.openSession()) {
             return session.getMapper(mapperClass);
-        }
-    }
-
-    public String executeQueryFromFile(String sqlFilePath, Map<String, Object> parameters) throws IOException {
-        String sql = SBQueryBuilder.loadSQLFromFile(sqlFilePath);
-        sql = SBQueryBuilder.processSQL(sql, sqlSessionFactory, parameters);
-
-        try (SqlSession session = sqlSessionFactory.openSession()) {
-            return session.selectOne("dynamicSQL", parameters);
         }
     }
 }
