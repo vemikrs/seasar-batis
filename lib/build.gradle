@@ -3,6 +3,9 @@ plugins {
     id 'java-library'
 }
 
+group = 'jp.vemi.seasarbatis'
+version = '1.0.0'
+
 repositories {
     // Use Maven Central for resolving dependencies.
     mavenCentral()
