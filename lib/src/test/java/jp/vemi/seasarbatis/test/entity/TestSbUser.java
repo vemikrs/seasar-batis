@@ -29,8 +29,6 @@ public class TestSbUser {
     @SBColumnMeta(name = "score")
     private Double score;
 
-    @lombok.Getter(value = lombok.AccessLevel.NONE)
-    @lombok.Setter(value = lombok.AccessLevel.NONE)
     @SBColumnMeta(name = "is_active")
     private Boolean isActive;
 
@@ -67,12 +65,6 @@ public class TestSbUser {
     @SBColumnMeta(name = "preferences")
     private String preferences;
 
-    // 個別のgetter/setter
-    public void setIsActive(Boolean isActive) {
-        this.isActive = isActive;
-    }
-
-    public Boolean getIsActive() {
-        return isActive;
-    }
+    // @SBColumnMeta(name = "version")
+    // private Long version;
 }

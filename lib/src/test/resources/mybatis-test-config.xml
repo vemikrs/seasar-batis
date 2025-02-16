@@ -1,20 +1,24 @@
-<?xml version="1.0" encoding="UTF-8" ?>
-<!DOCTYPE configuration
-    PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
-    "http://mybatis.org/dtd/mybatis-3-config.dtd">
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE configuration PUBLIC "-//mybatis.org//DTD Config 3.0//EN" "http://mybatis.org/dtd/mybatis-3-config.dtd">
 <configuration>
+    <settings>
+        <setting name="mapUnderscoreToCamelCase" value="true" />
+        <setting name="useGeneratedKeys" value="true" />
+        <setting name="defaultExecutorType" value="REUSE" />
+        <setting name="logImpl" value="SLF4J" />
+    </settings>
     <environments default="test">
         <environment id="test">
-            <transactionManager type="JDBC"/>
+            <transactionManager type="JDBC" />
             <dataSource type="POOLED">
-                <property name="driver" value="com.mysql.cj.jdbc.Driver"/>
-                <property name="url" value="jdbc:mysql://localhost:3306/testdb?serverTimezone=UTC"/>
-                <property name="username" value="testuser"/>
-                <property name="password" value="testpass"/>
+                <property name="driver" value="com.mysql.cj.jdbc.Driver" />
+                <property name="url" value="jdbc:mysql://localhost:3306/testdb?serverTimezone=UTC" />
+                <property name="username" value="testuser" />
+                <property name="password" value="testpass" />
             </dataSource>
         </environment>
     </environments>
     <mappers>
-        <mapper resource="jp/vemi/seasarbatis/sql/executor/SBQueryExecutor.xml"/>
+        <mapper resource="jp/vemi/seasarbatis/sql/executor/SBQueryExecutor.xml" />
     </mappers>
 </configuration>
