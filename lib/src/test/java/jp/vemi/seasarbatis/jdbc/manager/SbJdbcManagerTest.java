@@ -166,10 +166,12 @@ class SbJdbcManagerTest {
     void testInsert() {
         // 事前のレコード数を取得
         int countBefore = jdbcManager.findAll(TestSbUser.class).size();
+        RuntimeException exception = null;
         try {
             jdbcManager.transaction((manager) -> {
                 TestSbUser user = TestSbUser.builder()
-                        .sequenceNo(1)
+                        .id(101L)
+                        .sequenceNo(101)
                         .amount(1000.0)
                         .rate(0.12F)
                         .score(100.0)
@@ -194,7 +196,12 @@ class SbJdbcManagerTest {
             });
         } catch (RuntimeException e) {
             // ロールバックされたことを想定
+            exception = e;
         }
+        // 例外メッセージの検証
+        assertNotNull(exception, "RuntimeExceptionがスローされていること");
+        assertEquals("強制ロールバック", exception.getMessage(), "例外メッセージが一致すること");
+
         // 事後のレコード数は変わっていないはず
         int countAfter = jdbcManager.findAll(TestSbUser.class).size();
         assertEquals(countBefore, countAfter, "INSERT処理がロールバックされていることを確認");
@@ -273,6 +280,8 @@ class SbJdbcManagerTest {
             jdbcManager.transaction(manager -> {
                 // 新規ユーザーの作成
                 TestSbUser user = TestSbUser.builder()
+                        .id(102L)
+                        .sequenceNo(102)
                         .name("トランザクションテスト")
                         .isActive(true)
                         .build();
