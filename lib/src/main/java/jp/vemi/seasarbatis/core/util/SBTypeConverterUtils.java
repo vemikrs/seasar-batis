@@ -9,11 +9,16 @@ import java.sql.Timestamp;
 import java.sql.Date;
 import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.Arrays;
+import java.util.stream.Collectors;
+import java.lang.reflect.Field;
 
 import org.apache.ibatis.reflection.MetaObject;
 import org.apache.ibatis.session.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.common.base.CaseFormat;
 
 /**
  * MyBatis型ハンドラを使用したエンティティ変換ユーティリティクラスです。<br>
@@ -21,7 +26,7 @@ import org.slf4j.LoggerFactory;
  * 変換に失敗した場合、例外を投げるかどうかをオプションで指定可能です。<br>
  * 
  * @author
- * @version 1.3.0
+ * @version 1.0.0
  * @since 2025/01/01
  */
 public class SBTypeConverterUtils {
@@ -57,12 +62,14 @@ public class SBTypeConverterUtils {
         T entity = configuration.getObjectFactory().create(entityClass);
         MetaObject metaObject = configuration.newMetaObject(entity);
         row.forEach((key, value) -> {
-            if (metaObject.hasSetter(key)) {
-                Class<?> setterType = metaObject.getSetterType(key);
+            String camelCaseKey = CaseFormat.LOWER_UNDERSCORE.to(CaseFormat.LOWER_CAMEL, key);
+            if (metaObject.hasSetter(key) || metaObject.hasSetter(camelCaseKey)) {
+                String actualKey = metaObject.hasSetter(key) ? key : camelCaseKey;
+                Class<?> setterType = metaObject.getSetterType(actualKey);
                 if (value != null && !setterType.isAssignableFrom(value.getClass())) {
                     value = convertValue(value, setterType, throwOnError);
                 }
-                metaObject.setValue(key, value);
+                metaObject.setValue(actualKey, value);
             }
         });
         return entity;
