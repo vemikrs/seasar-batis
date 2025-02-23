@@ -1,45 +1,55 @@
 /*
- * Copyright(c) 2025 VEMIDaS, All rights reserved.
+ * Copyright (C) 2025 VEMI, All Rights Reserved.
  */
 package jp.vemi.seasarbatis.core.sql.processor;
 
 import java.io.IOException;
 import java.util.Map;
 
-import org.apache.ibatis.session.SqlSessionFactory;
+import org.apache.ibatis.session.Configuration;
 
 import jp.vemi.seasarbatis.core.sql.ParsedSql;
 import jp.vemi.seasarbatis.core.sql.ProcessedSql;
 import jp.vemi.seasarbatis.core.sql.loader.SBSqlFileLoader;
 
 /**
- * SQLを解析するクラスです。
+ * SQLを解析・処理するプロセッサークラスです。
+ * <p>
+ * MyBatisの機能を利用してSQLの解析と変数のバインド処理を行います。
+ * IF条件の評価やバインド変数の置換などの基本的なSQL処理機能を提供します。
+ * </p>
+ *
+ * @author H.Kurosawa
+ * @version 1.0.0
+ * @since 2025/01/01
  */
 public class SBSqlProcessor {
-    private final SqlSessionFactory sqlSessionFactory;
+    private final Configuration configuration;
 
-    public SBSqlProcessor(SqlSessionFactory sqlSessionFactory) {
-        this.sqlSessionFactory = sqlSessionFactory;
+    /**
+     * SBSqlProcessorを構築します。
+     *
+     * @param configuration MyBatisの設定オブジェクト
+     */
+    public SBSqlProcessor(Configuration configuration) {
+        this.configuration = configuration;
     }
 
     /**
-     * SQLを解析します。
+     * SQLを解析し、実行可能な形式に処理します。
      * 
-     * @param sql
-     * @param parameters
-     * @return
+     * @param sql        SQL文字列
+     * @param parameters バインドパラメータ
+     * @return 処理済みSQL情報
      */
     public ProcessedSql process(String sql, Map<String, Object> parameters) {
-        // 1. SBS2SqlParserでIF条件などの基本的な解析
         ParsedSql parsedSql = SBSqlParser.parse(sql, parameters);
 
-        // 2. MyBatisの機能でバインド変数を処理
         String processedSql = SBMyBatisSqlProcessor.process(
                 parsedSql.getSql(),
-                sqlSessionFactory,
+                configuration,
                 parameters);
 
-        // 3. 解析結果と実行用パラメータを保持したオブジェクトを返す
         return ProcessedSql.builder()
                 .sql(processedSql)
                 .build();
@@ -48,14 +58,13 @@ public class SBSqlProcessor {
     /**
      * SQLファイルを読み込み、SQLを解析します。
      * 
-     * @param filePath
-     * @param parameters
-     * @return
-     * @throws IOException
+     * @param filePath   SQLファイルのパス
+     * @param parameters バインドパラメータ
+     * @return 処理済みSQL情報
+     * @throws IOException SQLファイルの読み込みに失敗した場合
      */
     public ProcessedSql processFile(String filePath, Map<String, Object> parameters) throws IOException {
         String sql = SBSqlFileLoader.load(filePath);
         return process(sql, parameters);
     }
-
 }

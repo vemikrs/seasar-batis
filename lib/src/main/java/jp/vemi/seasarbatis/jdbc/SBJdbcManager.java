@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.concurrent.Callable;
 
 import javax.sql.DataSource;
 
@@ -54,6 +55,7 @@ public class SBJdbcManager {
 
     private final SqlSessionFactory sqlSessionFactory;
     private final SBQueryExecutor queryExecutor;
+    private final SBTransactionOperation txOperation;
 
     /**
      * {@link SBJdbcManager}を構築します。
@@ -62,7 +64,8 @@ public class SBJdbcManager {
      */
     public SBJdbcManager(SqlSessionFactory sqlSessionFactory) {
         this.sqlSessionFactory = sqlSessionFactory;
-        this.queryExecutor = new SBQueryExecutor(sqlSessionFactory);
+        this.txOperation = new SBTransactionOperation(sqlSessionFactory);
+        this.queryExecutor = new SBQueryExecutor(sqlSessionFactory.getConfiguration(), txOperation);
     }
 
     /**
@@ -265,8 +268,7 @@ public class SBJdbcManager {
      * @return 登録されたエンティティ
      */
     public <T> T insert(T entity, boolean isIndependentTransaction) {
-        SqlSession session = sqlSessionFactory.openSession(false);
-        return executeWithSession(session, isIndependentTransaction, (s) -> {
+        return executeWithTransaction(isIndependentTransaction, () -> {
             String tableName = getTableName(entity.getClass());
             Map<String, Object> params = getEntityParams(entity);
 
@@ -282,13 +284,13 @@ public class SBJdbcManager {
             values.setLength(values.length() - 2);
             sql.append(values).append(")");
 
-            queryExecutor.execute(sql.toString(), params, INSERT, session);
+            queryExecutor.execute(sql.toString(), params, INSERT);
 
             @SuppressWarnings("unchecked")
-            Select<T> newSelect = this.<T>select().from((Class<T>) entity.getClass())
+            Select<T> newSelect = this.<T>select()
+                    .from((Class<T>) entity.getClass())
                     .byPrimaryKey(getPrimaryKeyValues(entity));
-            T newEntity = newSelect.getSingleResult();
-            return newEntity;
+            return newSelect.getSingleResult();
         });
     }
 
@@ -300,58 +302,8 @@ public class SBJdbcManager {
      * @return 更新されたエンティティ
      * @throws IllegalArgumentException 主キーが設定されていない場合
      */
-    @SuppressWarnings("unchecked")
     public <T> T updateByPk(T entity) {
-        SqlSession session = sqlSessionFactory.openSession(false);
-        return (T) executeWithSession(session, false, (s) -> {
-            String tableName = getTableName(entity.getClass());
-            Map<String, Object> pkValues = getPrimaryKeyValues(entity);
-
-            if (pkValues.isEmpty()) {
-                throw new IllegalArgumentException("主キーが設定されていません");
-            }
-
-            Map<String, Object> params = getEntityParams(entity);
-            // 主キーを params から削除
-            pkValues.keySet().forEach(params::remove);
-
-            StringBuilder sql = new StringBuilder("UPDATE " + tableName + " SET ");
-
-            // 主キー以外のカラムを更新対象とする
-            params.forEach((column, value) -> {
-                if (!pkValues.containsKey(column)) {
-                    sql.append(column)
-                            .append(" = /*")
-                            .append(column)
-                            .append("*/null, ");
-                }
-            });
-
-            sql.setLength(sql.length() - 2);
-            sql.append(" WHERE ");
-
-            // 複数の主キーでWHERE句を構築
-            int pkCount = 0;
-            for (Map.Entry<String, Object> pk : pkValues.entrySet()) {
-                if (pkCount++ > 0)
-                    sql.append(" AND ");
-                sql.append(pk.getKey())
-                        .append(" = /*pk")
-                        .append(pkCount)
-                        .append("*/0");
-                params.put("pk" + pkCount, pk.getValue());
-            }
-
-            queryExecutor.execute(sql.toString(), params, UPDATE, session);
-
-            List<T> newEntity = queryExecutor.executeSelect(
-                    "SELECT * FROM " + tableName + " WHERE " + pkValues.entrySet().stream()
-                            .map(e -> e.getKey() + " = '" + e.getValue() + "'")
-                            .collect(Collectors.joining(" AND ")),
-                    params,
-                    (Class<T>) entity.getClass());
-            return newEntity.isEmpty() ? null : newEntity.get(0);
-        });
+        return updateByPk(entity, false);
     }
 
     /**
@@ -365,8 +317,7 @@ public class SBJdbcManager {
      */
     @SuppressWarnings("unchecked")
     public <T> T updateByPk(T entity, boolean isIndependentTransaction) {
-        SqlSession session = sqlSessionFactory.openSession(false);
-        return (T) executeWithSession(session, isIndependentTransaction, (s) -> {
+        return executeWithTransaction(isIndependentTransaction, () -> {
             String tableName = getTableName(entity.getClass());
             Map<String, Object> pkValues = getPrimaryKeyValues(entity);
 
@@ -405,7 +356,7 @@ public class SBJdbcManager {
                 params.put("pk" + pkCount, pk.getValue());
             }
 
-            queryExecutor.execute(sql.toString(), params, UPDATE, session);
+            queryExecutor.execute(sql.toString(), params, UPDATE);
 
             List<T> newEntity = queryExecutor.executeSelect(
                     "SELECT * FROM " + tableName + " WHERE " + pkValues.entrySet().stream()
@@ -438,8 +389,7 @@ public class SBJdbcManager {
      * @throws IllegalArgumentException 指定された主キーの数が不正な場合
      */
     public <T> void deleteByPk(Class<T> entityClass, boolean isIndependentTransaction, Object... primaryKeys) {
-        SqlSession session = sqlSessionFactory.openSession(false);
-        executeWithSession(session, isIndependentTransaction, (s) -> {
+        executeWithTransaction(isIndependentTransaction, () -> {
             PrimaryKeyInfo pkInfo = getPrimaryKeyInfo(entityClass);
             if (primaryKeys.length != pkInfo.columnNames.size()) {
                 throw new IllegalArgumentException(
@@ -459,7 +409,7 @@ public class SBJdbcManager {
                 params.put("pk" + i, primaryKeys[i]);
             }
 
-            queryExecutor.execute(sql.toString(), params, DELETE, session);
+            queryExecutor.execute(sql.toString(), params, DELETE);
             return null;
         });
     }
@@ -488,8 +438,7 @@ public class SBJdbcManager {
      * @return 処理されたエンティティ
      */
     public <T> T insertOrUpdate(T entity, boolean isIndependentTransaction) {
-        SqlSession session = sqlSessionFactory.openSession(false);
-        return executeWithSession(session, isIndependentTransaction, (s) -> {
+        return executeWithTransaction(isIndependentTransaction, () -> {
             Map<String, Object> pkValues = getPrimaryKeyValues(entity);
 
             // 主キーが未設定の場合はINSERT
@@ -513,7 +462,7 @@ public class SBJdbcManager {
                 params.put("pk" + pkCount, pk.getValue());
             }
 
-            List<Map<String, Object>> result = queryExecutor.execute(sql.toString(), params, SELECT, session);
+            List<Map<String, Object>> result = queryExecutor.execute(sql.toString(), params, SELECT);
             long count = ((Number) result.get(0).values().iterator().next()).longValue();
 
             if (count > 0) {
@@ -526,55 +475,54 @@ public class SBJdbcManager {
         });
     }
 
-    /**
-     * SQLセッションをオープンして共通の前処理・後処理を行いながらSQLを実行します。
-     * <p>
-     * セッションのコミット、ロールバック処理もこのメソッド内で行います。
-     * </p>
-     *
-     * @param <T>                      戻り値の型
-     * @param session                  SqlSession
-     * @param isIndependentTransaction 独立したトランザクションで実行するかどうか
-     * @param action                   セッション上で実行する処理を表すラムダ
-     * @return 実行結果
-     */
-    private <T> T executeWithSession(SqlSession session, boolean isIndependentTransaction,
-            Function<SqlSession, T> action) {
-        boolean external = false;
+    // 修正: executeWithTransactionメソッド
+    private <T> T executeWithTransaction(boolean isIndependentTransaction, Callable<T> operation) {
+        if (isIndependentTransaction) {
+            try {
+                SqlSession session = sqlSessionFactory.openSession(false);
+                txOperation.begin(session);
+                try {
+                    T result = operation.call();
+                    txOperation.commit();
+                    return result;
+                } catch (Exception e) {
+                    txOperation.rollback();
+                    throw new RuntimeException("SQL実行エラー", e);
+                } finally {
+                    txOperation.end();
+                }
+            } catch (Exception e) {
+                throw new RuntimeException("トランザクション実行エラー", e);
+            }
+        }
+
+        // 既存のトランザクションが存在しない場合は新規作成
+        if (!txOperation.isActive()) {
+            txOperation.begin(sqlSessionFactory.openSession(false));
+        }
 
         try {
-            return action.apply(session);
+            return operation.call();
         } catch (Exception e) {
-            session.rollback();
-            logger.error("SQL実行エラー: {}", e.getMessage(), e);
-            throw new RuntimeException("SQL実行中にエラーが発生しました", e);
-        } finally {
-            if (session != null && !external) {
-                session.close();
-            }
+            throw new RuntimeException("SQL実行エラー", e);
         }
     }
 
-    /**
-     * 独立したトランザクション内で処理を実行します。
-     *
-     * @param <T>      戻り値の型
-     * @param function 実行する処理
-     * @return 処理結果
-     */
     private <T> T executeInNewTransaction(Function<SBJdbcManager, T> function) {
-        SqlSession session = sqlSessionFactory.openSession(ExecutorType.REUSE);
+        SBJdbcManager innerManager = new SBJdbcManager(sqlSessionFactory);
+        SqlSession session = sqlSessionFactory.openSession(ExecutorType.REUSE, false);
+
         try {
-            SBJdbcManager innerManager = new SBJdbcManager(sqlSessionFactory);
+            innerManager.txOperation.begin(session);
             T result = function.apply(innerManager);
-            session.commit();
+            innerManager.txOperation.commit();
             return result;
         } catch (Exception e) {
-            session.rollback();
+            innerManager.txOperation.rollback();
             logger.error("トランザクション実行エラー", e);
             throw new RuntimeException("トランザクション実行に失敗しました", e);
         } finally {
-            session.close();
+            innerManager.txOperation.end();
         }
     }
 
@@ -651,25 +599,22 @@ public class SBJdbcManager {
             executeInNewTransaction(manager -> {
                 try {
                     callback.execute(manager);
+                    return null;
                 } catch (Exception e) {
-                    throw new RuntimeException(e); // Rollback the new transaction
+                    throw new RuntimeException(e);
                 }
-                return null;
             });
             return;
         }
 
-        SqlSession session = sqlSessionFactory.openSession(false);
         try {
-            SBJdbcManager manager = new SBJdbcManager(sqlSessionFactory);
-            callback.execute(manager);
-            session.commit();
+            callback.execute(this);
+            txOperation.commit();
         } catch (Exception e) {
-            session.rollback();
-            logger.error("トランザクション実行エラー", e);
+            txOperation.rollback();
             throw new RuntimeException("トランザクション実行に失敗しました", e);
         } finally {
-            session.close(); // finallyブロックで確実にセッションをクローズ
+            txOperation.end();
         }
     }
 
@@ -913,6 +858,10 @@ public class SBJdbcManager {
          */
         public List<T> getResultList() {
             try {
+                if (!txOperation.isActive()) {
+                    txOperation.begin(sqlSessionFactory.openSession(false));
+                }
+
                 if (sql != null) {
                     return queryExecutor.executeSelect(sql, params, entityClass);
                 } else if (sqlFile != null) {

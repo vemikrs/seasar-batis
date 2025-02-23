@@ -7,7 +7,6 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.apache.ibatis.session.Configuration;
@@ -21,6 +20,7 @@ import jp.vemi.seasarbatis.core.sql.ProcessedSql;
 import jp.vemi.seasarbatis.core.sql.loader.SBSqlFileLoader;
 import jp.vemi.seasarbatis.core.sql.processor.SBSqlProcessor;
 import jp.vemi.seasarbatis.core.util.SBTypeConverterUtils;
+import jp.vemi.seasarbatis.jdbc.SBTransactionOperation;
 
 /**
  * SQLクエリを実行するための実行クラスです。
@@ -34,12 +34,29 @@ import jp.vemi.seasarbatis.core.util.SBTypeConverterUtils;
  */
 public class SBQueryExecutor {
     private static final Logger logger = LoggerFactory.getLogger(SBQueryExecutor.class);
-    private final SqlSessionFactory sqlSessionFactory;
     private final SBSqlProcessor sqlProcessor;
+    private final SBTransactionOperation txOperation;
 
-    public SBQueryExecutor(SqlSessionFactory sqlSessionFactory) {
-        this.sqlSessionFactory = sqlSessionFactory;
-        this.sqlProcessor = new SBSqlProcessor(sqlSessionFactory);
+    /**
+     * SBQueryExecutorを構築します。（SQLセッションファクトリ指定）
+     *
+     * @param sqlSessionFactory {@link SqlSessionFactory}
+     * @param txOperation       トランザクション操作
+     */
+    public SBQueryExecutor(SqlSessionFactory sqlSessionFactory, SBTransactionOperation txOperation) {
+        this.sqlProcessor = new SBSqlProcessor(sqlSessionFactory.getConfiguration());
+        this.txOperation = txOperation;
+    }
+
+    /**
+     * SBQueryExecutorを構築します。（設定オブジェクト指定）
+     *
+     * @param configuration MyBatis設定オブジェクト
+     * @param txOperation   トランザクション操作
+     */
+    public SBQueryExecutor(Configuration configuration, SBTransactionOperation txOperation) {
+        this.sqlProcessor = new SBSqlProcessor(configuration);
+        this.txOperation = txOperation;
     }
 
     /**
@@ -75,7 +92,7 @@ public class SBQueryExecutor {
     public <T> T executeFile(String sqlFile, Map<String, Object> parameters, CommandType commandType) {
         try {
             String sql = SBSqlFileLoader.load(sqlFile);
-            return executeSqlCommand(sql, parameters, commandType);
+            return execute(sql, parameters, commandType);
         } catch (IOException e) {
             logger.error("SQLファイル読み込みエラー: {}", e.getMessage(), e);
             throw new RuntimeException("SQLファイルの読み込みに失敗しました: " + sqlFile, e);
@@ -97,16 +114,35 @@ public class SBQueryExecutor {
     }
 
     /**
-     * SQL文字列から直接実行します。
-     * 
+     * SQL文字列を実行します。
+     *
      * @param <T>         戻り値の型
      * @param sql         SQL文
      * @param parameters  バインドパラメータ
      * @param commandType SQLコマンドタイプ
      * @return 実行結果
      */
+    @SuppressWarnings("unchecked")
     public <T> T execute(String sql, Map<String, Object> parameters, CommandType commandType) {
-        return executeWithSession(null, commandType, session -> execute(sql, parameters, commandType, session));
+        ProcessedSql processedSql = sqlProcessor.process(sql, parameters);
+        logger.debug("Executing {} SQL: {}", commandType, processedSql);
+
+        SqlSession session = txOperation.getCurrentSession();
+        String statement = "jp.vemi.seasarbatis.prepared" + commandType;
+
+        try {
+            if (CommandType.SELECT.equals(commandType)) {
+                List<Map<String, Object>> results = session.selectList(statement,
+                        Collections.singletonMap("_sql", processedSql.getSql()));
+                return (T) results;
+            } else {
+                return (T) executeStatement(session, statement,
+                        Collections.singletonMap("_sql", processedSql.getSql()), commandType);
+            }
+        } catch (Exception e) {
+            logger.error("SQL実行エラー: {}", e.getMessage(), e);
+            throw new RuntimeException("SQL実行中にエラーが発生しました", e);
+        }
     }
 
     /**
@@ -142,8 +178,18 @@ public class SBQueryExecutor {
      * @return マッピングされた結果のリスト
      */
     public <T> List<T> executeSelect(String sql, Map<String, Object> parameters, Class<T> resultType) {
-        return executeWithSession(null, CommandType.SELECT,
-                session -> executeSelect(sql, parameters, resultType, session));
+        ProcessedSql processedSql = sqlProcessor.process(sql, parameters);
+        logger.debug("Executing SELECT SQL: {}", processedSql);
+
+        SqlSession session = txOperation.getCurrentSession();
+        List<Map<String, Object>> rawResults = session.selectList(
+                "jp.vemi.seasarbatis.preparedSELECT",
+                Collections.singletonMap("_sql", processedSql.getSql()));
+
+        Configuration configuration = session.getConfiguration();
+        return rawResults.stream()
+                .map(row -> SBTypeConverterUtils.convertRowToEntity(row, resultType, configuration))
+                .collect(Collectors.toList());
     }
 
     /**
@@ -158,7 +204,7 @@ public class SBQueryExecutor {
         if (CommandType.SELECT.equals(commandType)) {
             throw new IllegalArgumentException("SELECT文にはexecuteSelectを使用してください");
         }
-        return executeSqlCommand(sql, parameters, commandType);
+        return executeSqlCommand(sql, parameters, commandType, txOperation.getCurrentSession());
     }
 
     /**
@@ -187,87 +233,6 @@ public class SBQueryExecutor {
         } else {
             return (T) executeStatement(session, statement,
                     Collections.singletonMap("_sql", processedSql.getSql()), commandType);
-        }
-    }
-
-    /**
-     * SQL文字列を処理し、セッションをオープンしてSQLを実行します。
-     * <p>
-     * 共通のセッション処理をまとめ、各種SQL実行メソッドの冗長性を低減します。
-     * </p>
-     *
-     * @param <T>         戻り値の型
-     * @param sql         SQL文
-     * @param parameters  バインドパラメータ
-     * @param commandType SQLコマンドタイプ
-     * @return 実行結果
-     */
-    private <T> T executeSqlCommand(String sql, Map<String, Object> parameters, CommandType commandType) {
-        return executeWithSession(null, commandType,
-                session -> executeSqlCommand(sql, parameters, commandType, session));
-    }
-
-    /**
-     * SQLセッションをオープンして共通の前処理・後処理を行いながらSQLを実行します。
-     * <p>
-     * セッションのコミット、ロールバック処理もこのメソッド内で行います。
-     * </p>
-     *
-     * @param <T>          戻り値の型
-     * @param processedSql 解析済みSQLオブジェクト
-     * @param commandType  SQLコマンドタイプ
-     * @param action       セッション上で実行する処理を表すラムダ
-     * @return 実行結果
-     */
-    private <T> T executeWithSession(ProcessedSql processedSql, CommandType commandType,
-            Function<SqlSession, T> action) {
-        return executeWithSession(processedSql, commandType, action, null);
-    }
-
-    /**
-     * SQLセッションをオープンして共通の前処理・後処理を行いながらSQLを実行します。
-     * <p>
-     * セッションのコミット、ロールバック処理もこのメソッド内で行います。
-     * </p>
-     *
-     * @param <T>             戻り値の型
-     * @param processedSql    解析済みSQLオブジェクト
-     * @param commandType     SQLコマンドタイプ
-     * @param action          セッション上で実行する処理を表すラムダ
-     * @param externalSession 外部セッション
-     * @return 実行結果
-     */
-    private <T> T executeWithSession(ProcessedSql processedSql, CommandType commandType,
-            Function<SqlSession, T> action, SqlSession externalSession) {
-        SqlSession session = externalSession;
-        boolean external = false;
-
-        if (externalSession == null) {
-            session = sqlSessionFactory.openSession(false);
-        } else {
-            external = true;
-        }
-
-        try {
-            T result = action.apply(session);
-            /*
-             * if (!CommandType.SELECT.equals(commandType)) {
-             * session.commit();
-             * logger.info("{} affected {} rows", commandType, result);
-             * }
-             */
-            return result;
-        } catch (Exception e) {
-            logger.error("SQL実行エラー: {}", e.getMessage(), e);
-            if (session != null && !external) {
-                session.rollback();
-                logger.warn("トランザクションをロールバックしました");
-            }
-            throw new RuntimeException("SQL実行中にエラーが発生しました", e);
-        } finally {
-            if (session != null && !external) {
-                session.close();
-            }
         }
     }
 

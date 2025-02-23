@@ -22,7 +22,6 @@ import org.apache.ibatis.mapping.SqlCommandType;
 import org.apache.ibatis.scripting.xmltags.DynamicSqlSource;
 import org.apache.ibatis.scripting.xmltags.TextSqlNode;
 import org.apache.ibatis.session.Configuration;
-import org.apache.ibatis.session.SqlSessionFactory;
 
 /**
  * MyBatisの機能を使用してSQLを処理し、パラメータの値を埋め込んだSQL文字列を返します。
@@ -43,16 +42,13 @@ public class SBMyBatisSqlProcessor {
     /**
      * SQLを処理します。
      *
-     * @param sql               SQL文
-     * @param sqlSessionFactory MyBatis用 SqlSessionFactory
-     * @param parameters        バインドパラメータ
+     * @param sql SQL文
+     * @param configuration MyBatis設定
+     * @param parameters バインドパラメータ
      * @return バインド変数に値が代入されたSQL文字列
      */
-    public static String process(String sql, SqlSessionFactory sqlSessionFactory, Map<String, Object> parameters) {
-
-        Configuration configuration = sqlSessionFactory.getConfiguration();
+    public static String process(String sql, Configuration configuration, Map<String, Object> parameters) {
         List<ParameterMapping> parameterMappings = getParameterMappings(configuration, sql);
-
         String sqlWithPlaceholders = sql;
 
         // プレースホルダをパラメータの値に置換
