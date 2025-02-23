@@ -3,7 +3,7 @@
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/jp.vemi/seasar-batis/badge.svg)](https://maven-badges.herokuapp.com/maven-central/jp.vemi/seasar-batis)
 [![Javadocs](http://javadoc.io/badge/jp.vemi/seasar-batis.svg)](http://javadoc.io/doc/jp.vemi/seasar-batis)
 
-**注意：このライブラリは現在ベータ版です。**  
+**注意：このライブラリは現在開発中です。不具合や未開発のAPIを含む点に注意してください。**  
 
 ---
 
