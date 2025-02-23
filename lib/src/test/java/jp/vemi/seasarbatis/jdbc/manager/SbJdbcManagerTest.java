@@ -159,7 +159,7 @@ class SbJdbcManagerTest {
         assertFalse(results.isEmpty());
         assertEquals(1, results.size(), "1件のみ取得されること");
         assertEquals("テストユーザー1", results.get(0).getName(), "名前が一致すること");
-        // assertTrue(results.get(0).getIsActive(), "有効なユーザーであること");
+        assertTrue(results.get(0).getIsActive(), "有効なユーザーであること");
     }
 
     @Test
@@ -200,7 +200,7 @@ class SbJdbcManagerTest {
         }
         // 例外メッセージの検証
         assertNotNull(exception, "RuntimeExceptionがスローされていること");
-        assertEquals("強制ロールバック", exception.getMessage(), "例外メッセージが一致すること");
+        assertEquals("強制ロールバック", exception.getCause().getMessage(), "例外メッセージが一致すること");
 
         // 事後のレコード数は変わっていないはず
         int countAfter = jdbcManager.findAll(TestSbUser.class).size();
@@ -213,24 +213,30 @@ class SbJdbcManagerTest {
         TestSbUser original = jdbcManager.findByPk(TestSbUser.builder()
                 .id(1L).build()).getSingleResult();
         String originalName = original.getName();
+        RuntimeException exception = null;
         try {
             jdbcManager.transaction(manager -> {
                 TestSbUser user = manager.findByPk(TestSbUser.builder()
                         .id(1L).build()).getSingleResult();
                 user.setName("更新後の名前");
-                @SuppressWarnings("unused")
                 TestSbUser updated = manager.updateByPk(user);
-                // assertEquals("更新後の名前", updated.getName());
+                assertEquals("更新後の名前", updated.getName());
                 // 強制的な例外発生でトランザクションをロールバック
                 throw new RuntimeException("強制ロールバック");
             });
         } catch (RuntimeException e) {
-            // ロールバックが想定される
+            // ロールバックされたことを想定
+            exception = e;
         }
+        // 例外メッセージの検証
+        assertNotNull(exception, "RuntimeExceptionがスローされていること");
+        assertEquals("強制ロールバック", exception.getCause().getMessage(), "例外メッセージが一致すること");
+
         // 事後、更新前の値に戻っていることを確認
         TestSbUser afterUpdate = jdbcManager.findByPk(TestSbUser.builder()
                 .id(1L).build()).getSingleResult();
         assertEquals(originalName, afterUpdate.getName(), "UPDATE処理がロールバックされていることを確認");
+
     }
 
     @Test
