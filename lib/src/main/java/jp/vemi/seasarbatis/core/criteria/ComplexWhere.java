@@ -27,7 +27,7 @@ public class ComplexWhere extends AbstractWhere<ComplexWhere> {
     public ComplexWhere add(SBWhere where) {
         if (where != null && where.hasConditions()) {
             wheres.add(where);
-            if (!operators.isEmpty()) {
+            if (wheres.size() > 1) {
                 operators.add(nextOperator);
             }
         }
@@ -71,7 +71,7 @@ public class ComplexWhere extends AbstractWhere<ComplexWhere> {
         }
 
         for (int i = 0; i < wheres.size(); i++) {
-            if (i > 0) {
+            if (i > 0 && operators.size() > i - 1) {
                 sql.append(" ").append(operators.get(i - 1)).append(" ");
             }
             String whereSql = wheres.get(i).getWhereSql();
