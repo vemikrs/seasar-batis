@@ -4,13 +4,13 @@ plugins {
     // Apply the maven-publish plugin for publishing to a Maven repository.
     id 'maven-publish'
     id 'signing'
+    id 'jacoco'
 }
 
 group = 'jp.vemi'
 version = '1.0.0-beta1'
 
 repositories {
-    // Use Maven Central for resolving dependencies.
     mavenCentral()
 }
 
@@ -53,6 +53,17 @@ dependencies {
 }
 
 tasks.named('test') {
-    // Use JUnit Platform for unit tests.
     useJUnitPlatform()
+    reports {
+        html.required = true
+        junitXml.required = false
+    }
+}
+
+jacocoTestReport {
+    reports {
+        xml.required = false
+        csv.required = false
+        html.required = true
+    }
 }
