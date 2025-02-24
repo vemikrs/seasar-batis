@@ -13,17 +13,15 @@ import jp.vemi.seasarbatis.core.criteria.OrderDirection;
 import jp.vemi.seasarbatis.core.criteria.SBWhere;
 import jp.vemi.seasarbatis.core.criteria.SimpleWhere;
 import jp.vemi.seasarbatis.core.sql.SBSqlFormatter;
+import jp.vemi.seasarbatis.exception.SBNonUniqueResultException;
 import jp.vemi.seasarbatis.jdbc.SBJdbcManager;
 
 /**
- * SELECT文を構築するビルダークラス。
- * Fluent interfaceパターンでSELECT文を組み立てます。
+ * SELECT文を構築するビルダークラス。 Fluent interfaceパターンでSELECT文を組み立てます。
  * 
  * @param <E> エンティティの型
  */
-public class SBSelectBuilder<E> implements
-        SBWhereCapable<SBSelectBuilder<E>>,
-        SBOrderByCapable<SBSelectBuilder<E>> {
+public class SBSelectBuilder<E> implements SBWhereCapable<SBSelectBuilder<E>>, SBOrderByCapable<SBSelectBuilder<E>> {
 
     private final SBJdbcManager jdbcManager;
     private final Class<E> entityClass;
@@ -45,8 +43,7 @@ public class SBSelectBuilder<E> implements
     @Override
     public String build() {
         StringBuilder sql = new StringBuilder();
-        sql.append("SELECT * FROM ")
-                .append(jdbcManager.getTableName(entityClass));
+        sql.append("SELECT * FROM ").append(jdbcManager.getTableName(entityClass));
 
         if (where != null && !where.build().isEmpty()) {
             sql.append(where.build());
@@ -54,8 +51,7 @@ public class SBSelectBuilder<E> implements
         }
 
         if (!orderByList.isEmpty()) {
-            sql.append(" ORDER BY ")
-                    .append(String.join(", ", orderByList));
+            sql.append(" ORDER BY ").append(String.join(", ", orderByList));
         }
 
         return SBSqlFormatter.simplify(sql.toString());
@@ -103,7 +99,7 @@ public class SBSelectBuilder<E> implements
      * クエリを実行し、単一の結果を返します。
      * 
      * @return エンティティ。結果が存在しない場合はnull
-     * @throws IllegalStateException 複数の結果が存在する場合
+     * @throws SBNonUniqueResultException 複数の結果が存在する場合
      */
     public E getSingleResult() {
         List<E> results = getResultList();
@@ -111,7 +107,7 @@ public class SBSelectBuilder<E> implements
             return null;
         }
         if (results.size() > 1) {
-            throw new IllegalStateException("複数の結果が見つかりました");
+            throw new SBNonUniqueResultException("複数の結果が見つかりました。" + results.size() + "件");
         }
         return results.get(0);
     }

@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import jp.vemi.seasarbatis.core.sql.ParsedSql;
+import jp.vemi.seasarbatis.exception.SBSqlParseException;
 
 /**
  * SQLの解析とバインドパラメータの解決を行うクラスです。
@@ -90,10 +91,13 @@ public class SBSqlParser {
 
             int commentEnd = sql.indexOf("*/", commentStart + 2);
             if (commentEnd < 0) {
-                throw new IllegalArgumentException("コメントが閉じられていません: " + sql);
+                throw new SBSqlParseException("SQLコメントが正しく閉じられていません: " + sql);
             }
 
             String paramName = sql.substring(commentStart + 2, commentEnd).trim();
+            if (paramName.isEmpty()) {
+                throw new SBSqlParseException("空のSQLコメントが存在します: " + sql);
+            }
             paramNames.add(paramName);
 
             if (parameters.containsKey(paramName)) {
@@ -104,7 +108,6 @@ public class SBSqlParser {
         }
 
         String finalSql = processedSql.toString().replaceAll("\\s{2,}", " ").trim();
-
         return ParsedSql.builder().sql(finalSql).parameterNames(paramNames).build();
     }
 
@@ -239,13 +242,19 @@ public class SBSqlParser {
      * @return 条件式の評価結果
      */
     protected static boolean evaluateCondition(String condition, Map<String, Object> parameters) {
+        if (condition == null || condition.trim().isEmpty()) {
+            throw new SBSqlParseException("空の条件式が指定されました");
+        }
+
         if (condition.contains(" AND ")) {
             String[] conditions = condition.split(" AND ");
-            return Arrays.stream(conditions).allMatch(c -> evaluateSingleCondition(c.trim(), parameters));
+            return Arrays.stream(conditions).map(String::trim).filter(c -> !c.isEmpty())
+                    .allMatch(c -> evaluateSingleCondition(c, parameters));
         }
         if (condition.contains(" OR ")) {
             String[] conditions = condition.split(" OR ");
-            return Arrays.stream(conditions).anyMatch(c -> evaluateSingleCondition(c.trim(), parameters));
+            return Arrays.stream(conditions).map(String::trim).filter(c -> !c.isEmpty())
+                    .anyMatch(c -> evaluateSingleCondition(c, parameters));
         }
         return evaluateSingleCondition(condition, parameters);
     }
@@ -268,10 +277,15 @@ public class SBSqlParser {
 
     private static boolean evaluateSingleCondition(String condition, Map<String, Object> parameters) {
         String[] parts = condition.split("\\s+");
-        if (parts.length < 2)
-            return false;
+        if (parts.length < 2) {
+            throw new SBSqlParseException("不正な条件式フォーマットです: " + condition);
+        }
 
         String paramName = parts[0];
+        if (!parameters.containsKey(paramName)) {
+            throw new SBSqlParseException("パラメータが見つかりません: " + paramName);
+        }
+
         String operator = parts.length > 2 ? parts[1] : parts[1].equals("null") ? "null" : "!null";
         String value = parts.length > 2 ? parts[2] : null;
 

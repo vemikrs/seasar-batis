@@ -17,6 +17,8 @@ import org.apache.ibatis.transaction.jdbc.JdbcTransactionFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import jp.vemi.seasarbatis.exception.SBException;
+
 /**
  * {@link SBJdbcManager}を生成するファクトリクラスです。
  * <p>
@@ -66,7 +68,7 @@ public class SBJdbcManagerFactory {
             return factory;
         } catch (IOException e) {
             logger.error("MyBatis設定の読み込みに失敗しました: {}", e.getMessage(), e);
-            throw new RuntimeException("MyBatis設定の読み込みに失敗しました", e);
+            throw new SBException("MyBatis設定の読み込みに失敗しました", e);
         }
     }
 
