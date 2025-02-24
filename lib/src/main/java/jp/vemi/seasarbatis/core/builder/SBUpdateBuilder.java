@@ -2,6 +2,7 @@
  * Copyright(c) 2025 VEMI, All Rights Reserved.
  */
 package jp.vemi.seasarbatis.core.builder;
+import static jp.vemi.seasarbatis.core.entity.SBEntityOperations.getTableName;
 
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -53,7 +54,7 @@ public class SBUpdateBuilder<E> implements SBWhereCapable<SBUpdateBuilder<E>> {
     public String build() {
         StringBuilder sql = new StringBuilder();
         sql.append("UPDATE ")
-                .append(jdbcManager.getTableName(entityClass))
+                .append(getTableName(entityClass))
                 .append(" SET ");
 
         // SET句の構築

@@ -19,10 +19,10 @@ import jp.vemi.seasarbatis.core.sql.CommandType;
 import jp.vemi.seasarbatis.core.sql.ProcessedSql;
 import jp.vemi.seasarbatis.core.sql.loader.SBSqlFileLoader;
 import jp.vemi.seasarbatis.core.sql.processor.SBSqlProcessor;
+import jp.vemi.seasarbatis.core.transaction.SBTransactionOperation;
 import jp.vemi.seasarbatis.core.util.SBTypeConverterUtils;
 import jp.vemi.seasarbatis.exception.SBIllegalStateException;
 import jp.vemi.seasarbatis.exception.SBSQLException;
-import jp.vemi.seasarbatis.jdbc.SBTransactionOperation;
 
 /**
  * SQLクエリを実行するための実行クラスです。

@@ -3,6 +3,8 @@
  */
 package jp.vemi.seasarbatis.core.builder;
 
+import static jp.vemi.seasarbatis.core.entity.SBEntityOperations.getTableName;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -12,8 +14,7 @@ import jp.vemi.seasarbatis.core.criteria.SimpleWhere;
 import jp.vemi.seasarbatis.jdbc.SBJdbcManager;
 
 /**
- * DELETE文を構築するビルダークラス。
- * Fluent interfaceパターンでDELETE文を組み立てます。
+ * DELETE文を構築するビルダークラス。 Fluent interfaceパターンでDELETE文を組み立てます。
  * 
  * @param <E> エンティティの型
  */
@@ -38,8 +39,7 @@ public class SBDeleteBuilder<E> implements SBWhereCapable<SBDeleteBuilder<E>> {
     @Override
     public String build() {
         StringBuilder sql = new StringBuilder();
-        sql.append("DELETE FROM ")
-                .append(jdbcManager.getTableName(entityClass));
+        sql.append("DELETE FROM ").append(getTableName(entityClass));
 
         if (where != null) {
             sql.append(" WHERE ").append(where.build());

@@ -7,11 +7,11 @@ import java.util.List;
 
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import jp.vemi.seasarbatis.core.query.SBSelect;
 import jp.vemi.seasarbatis.jdbc.SBJdbcManager;
-
-import org.springframework.stereotype.Component;
 
 /**
  * SpringJdbcManager.
@@ -26,7 +26,7 @@ public class SpringJdbcManager extends SBJdbcManager {
 
     @Override
     @Transactional(readOnly = true)
-    public <T> Select<T> findByPk(T entity) {
+    public <T> SBSelect<T> findByPk(T entity) {
         return super.findByPk(entity);
     }
 

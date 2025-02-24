@@ -3,6 +3,8 @@
  */
 package jp.vemi.seasarbatis.core.builder;
 
+import static jp.vemi.seasarbatis.core.entity.SBEntityOperations.getTableName;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -43,7 +45,7 @@ public class SBSelectBuilder<E> implements SBWhereCapable<SBSelectBuilder<E>>, S
     @Override
     public String build() {
         StringBuilder sql = new StringBuilder();
-        sql.append("SELECT * FROM ").append(jdbcManager.getTableName(entityClass));
+        sql.append("SELECT * FROM ").append(getTableName(entityClass));
 
         if (where != null && !where.build().isEmpty()) {
             sql.append(where.build());
