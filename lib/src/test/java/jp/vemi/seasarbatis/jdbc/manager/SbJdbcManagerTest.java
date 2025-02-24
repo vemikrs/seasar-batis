@@ -19,6 +19,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.TestInstance;
 
 import jp.vemi.seasarbatis.core.criteria.OrderDirection;
 import jp.vemi.seasarbatis.core.criteria.SimpleWhere;
@@ -27,6 +31,8 @@ import jp.vemi.seasarbatis.jdbc.SBJdbcManagerFactory;
 import jp.vemi.seasarbatis.test.entity.TestSbUser;
 
 @ExtendWith(MockitoExtension.class)
+@TestMethodOrder(OrderAnnotation.class)
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class SbJdbcManagerTest {
 
     private SBJdbcManager jdbcManager;
@@ -76,6 +82,7 @@ class SbJdbcManagerTest {
     }
 
     @Test
+    @Order(1)
     void testFindByPk() {
         // テストデータ期待値
         TestSbUser expected = TestSbUser.builder()
@@ -115,6 +122,7 @@ class SbJdbcManagerTest {
     }
 
     @Test
+    @Order(2)
     void testFindAll() {
         // テストデータ作成
         List<TestSbUser> expected = Arrays.asList(
@@ -144,6 +152,7 @@ class SbJdbcManagerTest {
     }
 
     @Test
+    @Order(3)
     void testWhere() {
         // Where条件の作成
         SimpleWhere where = jdbcManager.where()
@@ -163,6 +172,7 @@ class SbJdbcManagerTest {
     }
 
     @Test
+    @Order(4)
     void testInsert() {
         // 事前のレコード数を取得
         int countBefore = jdbcManager.findAll(TestSbUser.class).size();
@@ -208,6 +218,7 @@ class SbJdbcManagerTest {
     }
 
     @Test
+    @Order(5)
     void testUpdate() {
         // 事前のデータを取得
         TestSbUser original = jdbcManager.findByPk(TestSbUser.builder()
@@ -219,7 +230,7 @@ class SbJdbcManagerTest {
                 TestSbUser user = manager.findByPk(TestSbUser.builder()
                         .id(1L).build()).getSingleResult();
                 user.setName("更新後の名前");
-                TestSbUser updated = manager.updateByPk(user);
+                TestSbUser updated = manager.update(user);
                 assertEquals("更新後の名前", updated.getName());
                 // 強制的な例外発生でトランザクションをロールバック
                 throw new RuntimeException("強制ロールバック");
@@ -240,6 +251,7 @@ class SbJdbcManagerTest {
     }
 
     @Test
+    @Order(6)
     void testFrom() {
         // テストの実行
         List<TestSbUser> users = jdbcManager
@@ -258,6 +270,7 @@ class SbJdbcManagerTest {
     }
 
     @Test
+    @Order(7)
     void testComplexQuery() {
         // 複雑なクエリのテスト
         List<TestSbUser> users = jdbcManager
@@ -280,6 +293,7 @@ class SbJdbcManagerTest {
     }
 
     @Test
+    @Order(8)
     void testTransaction() {
         // トランザクションテスト
         assertDoesNotThrow(() -> {
@@ -295,17 +309,23 @@ class SbJdbcManagerTest {
 
                 // 作成したユーザーの更新
                 inserted.setName("更新済み");
-                manager.updateByPk(inserted);
+                TestSbUser updated = manager.update(inserted);
 
                 // ここでエラーが発生した場合はロールバック
-                if (inserted.getId() == null) {
+                if (updated.getId() == null) {
                     throw new RuntimeException("テストエラー");
                 }
+                assertEquals(updated.getName(), "更新済み", "名前が更新されること？");
+
+                int deleted = jdbcManager.delete(TestSbUser.builder().id(102L).build());
+                assertEquals(deleted, 1, "Insertされたレコードが削除されること");
             });
         });
+
     }
 
     @Test
+    @Order(9) // 最後に実行
     void testOrderBy() {
         // 複数のORDER BY句のテスト
         List<TestSbUser> users = jdbcManager
