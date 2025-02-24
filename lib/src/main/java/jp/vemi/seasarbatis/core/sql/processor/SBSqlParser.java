@@ -107,12 +107,26 @@ public class SBSqlParser {
 
     /**
      * 型推論用のダミー値をスキップします。
+     * 
+     * <p>
+     * S2JDBCの仕様に従い、以下の処理を行います：
+     * <ul>
+     * <li>コメントの直後の空白文字はスキップしない（そのまま維持）</li>
+     * <li>ダミー値が存在しない場合もエラーとしない</li>
+     * <li>ダミー値が存在する場合は、その値をスキップ</li>
+     * </ul>
+     * </p>
      */
     private static int skipTypeDummyValue(String sql, int start) {
         int i = start;
-        while (i < sql.length() && Character.isWhitespace(sql.charAt(i))) {
-            i++;
+
+        // コメント直後の文字を確認
+        if (i >= sql.length() || Character.isWhitespace(sql.charAt(i))) {
+            // 空白文字か終端の場合は、ダミー値なしとして扱う
+            return i;
         }
+
+        // ダミー値のスキップ
         while (i < sql.length()) {
             char c = sql.charAt(i);
             if (Character.isWhitespace(c) || c == ',' || c == ')' || c == '(' || c == ';') {
