@@ -6,6 +6,8 @@ package jp.vemi.seasarbatis.jdbc;
 import org.apache.ibatis.session.SqlSession;
 import org.apache.ibatis.session.SqlSessionFactory;
 
+import jp.vemi.seasarbatis.exception.SBTransactionException;
+
 /**
  * トランザクション操作を管理するクラス。
  * <p>
@@ -33,11 +35,11 @@ public class SBTransactionOperation {
     /**
      * 新しいトランザクションを開始します。
      *
-     * @throws IllegalStateException トランザクションが既に開始されている場合
+     * @throws SBTransactionException トランザクションが既に開始されている場合
      */
     public void begin() {
         if (isActive) {
-            throw new IllegalStateException("トランザクションが既に開始されています");
+            throw new SBTransactionException("トランザクションが既に開始されています");
         }
         this.session = sqlSessionFactory.openSession(false);
         this.isActive = true;
@@ -47,11 +49,11 @@ public class SBTransactionOperation {
      * 新しいトランザクションを開始します。
      *
      * @param session SqlSession
-     * @throws IllegalStateException トランザクションが既に開始されている場合
+     * @throws SBTransactionException トランザクションが既に開始されている場合
      */
     public void begin(SqlSession session) {
         if (isActive) {
-            throw new IllegalStateException("トランザクションが既に開始されています");
+            throw new SBTransactionException("トランザクションが既に開始されています");
         }
         this.session = session;
         this.isActive = true;
@@ -62,7 +64,7 @@ public class SBTransactionOperation {
      */
     public void commit() {
         if (!isActive) {
-            throw new IllegalStateException("トランザクションが開始されていません");
+            throw new SBTransactionException("トランザクションが開始されていません");
         }
         session.commit();
     }
@@ -72,7 +74,7 @@ public class SBTransactionOperation {
      */
     public void rollback() {
         if (!isActive) {
-            throw new IllegalStateException("トランザクションが開始されていません");
+            throw new SBTransactionException("トランザクションが開始されていません");
         }
         session.rollback();
     }
@@ -99,7 +101,7 @@ public class SBTransactionOperation {
      */
     public SqlSession getCurrentSession() {
         if (!isActive) {
-            throw new IllegalStateException("トランザクションが開始されていません");
+            throw new SBTransactionException("トランザクションが開始されていません");
         }
         return session;
     }

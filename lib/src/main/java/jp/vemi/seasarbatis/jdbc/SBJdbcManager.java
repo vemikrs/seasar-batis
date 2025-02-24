@@ -16,9 +16,9 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.concurrent.Callable;
 
 import javax.sql.DataSource;
 
@@ -38,10 +38,17 @@ import jp.vemi.seasarbatis.core.criteria.SimpleWhere;
 import jp.vemi.seasarbatis.core.meta.SBColumnMeta;
 import jp.vemi.seasarbatis.core.meta.SBTableMeta;
 import jp.vemi.seasarbatis.core.sql.executor.SBQueryExecutor;
+import jp.vemi.seasarbatis.exception.SBEntityException;
+import jp.vemi.seasarbatis.exception.SBException;
+import jp.vemi.seasarbatis.exception.SBIllegalStateException;
+import jp.vemi.seasarbatis.exception.SBNoResultException;
+import jp.vemi.seasarbatis.exception.SBNonUniqueResultException;
+import jp.vemi.seasarbatis.exception.SBOptimisticLockException;
+import jp.vemi.seasarbatis.exception.SBSQLException;
+import jp.vemi.seasarbatis.exception.SBTransactionException;
 
 /**
- * JDBC操作を簡素化するマネージャークラス。
- * Seasar2のJdbcManagerに似た操作性を提供します。
+ * JDBC操作を簡素化するマネージャークラス。 Seasar2のJdbcManagerに似た操作性を提供します。
  * <p>
  * 本クラスは、MyBatisのSqlSessionを使用してデータベース操作を提供します。
  * </p>
@@ -86,14 +93,13 @@ public class SBJdbcManager {
     private static SqlSessionFactory createSqlSessionFactory(DataSource dataSource) {
         try (Reader reader = Resources.getResourceAsReader("mybatis-config.xml")) {
             SqlSessionFactory factory = new SqlSessionFactoryBuilder().build(reader);
-            factory.getConfiguration().setEnvironment(
-                    new org.apache.ibatis.mapping.Environment("development",
-                            new org.apache.ibatis.transaction.jdbc.JdbcTransactionFactory(), dataSource));
+            factory.getConfiguration().setEnvironment(new org.apache.ibatis.mapping.Environment("development",
+                    new org.apache.ibatis.transaction.jdbc.JdbcTransactionFactory(), dataSource));
             logger.info("MyBatis設定を読み込みました");
             return factory;
         } catch (IOException e) {
             logger.error("MyBatis設定の読み込みに失敗しました: {}", e.getMessage(), e);
-            throw new RuntimeException("MyBatis設定の読み込みに失敗しました", e);
+            throw new SBException("MyBatis設定の読み込みに失敗しました", e);
         }
     }
 
@@ -110,39 +116,33 @@ public class SBJdbcManager {
     /**
      * SQL文に基づいて検索を実行します。
      *
-     * @param <T>        戻り値の要素型
-     * @param sql        SQL文
-     * @param params     パラメータ
+     * @param <T> 戻り値の要素型
+     * @param sql SQL文
+     * @param params パラメータ
      * @param resultType 結果のマッピング先クラス
      * @return 検索結果のリスト
      */
     public <T> Select<T> selectBySql(String sql, Map<String, Object> params, Class<T> resultType) {
-        return this.<T>select()
-                .from(resultType)
-                .withSql(sql)
-                .withParams(params);
+        return this.<T>select().from(resultType).withSql(sql).withParams(params);
     }
 
     /**
      * SQLファイルに基づいて検索を実行します。
      *
-     * @param <T>        戻り値の要素型
-     * @param sqlFile    SQLファイルのパス
-     * @param params     パラメータ
+     * @param <T> 戻り値の要素型
+     * @param sqlFile SQLファイルのパス
+     * @param params パラメータ
      * @param resultType 結果のマッピング先クラス
      * @return 検索結果のリスト
      */
     public <T> Select<T> selectBySqlFile(String sqlFile, Map<String, Object> params, Class<T> resultType) {
-        return this.<T>select()
-                .from(resultType)
-                .withSqlFile(sqlFile)
-                .withParams(params);
+        return this.<T>select().from(resultType).withSqlFile(sqlFile).withParams(params);
     }
 
     /**
      * INSERT文を実行します。
      *
-     * @param sql    SQL文
+     * @param sql SQL文
      * @param params パラメータ
      * @return 実行結果
      */
@@ -154,7 +154,7 @@ public class SBJdbcManager {
      * SQLファイルからINSERT文を実行します。
      *
      * @param sqlFile SQLファイルパス
-     * @param params  パラメータ
+     * @param params パラメータ
      * @return 実行結果
      */
     public int insertBySqlFile(String sqlFile, Map<String, Object> params) {
@@ -164,7 +164,7 @@ public class SBJdbcManager {
     /**
      * UPDATE文を実行します。
      *
-     * @param sql    SQL文
+     * @param sql SQL文
      * @param params パラメータ
      * @return 更新された行数
      */
@@ -176,7 +176,7 @@ public class SBJdbcManager {
      * SQLファイルからUPDATE文を実行します。
      *
      * @param sqlFile SQLファイルパス
-     * @param params  パラメータ
+     * @param params パラメータ
      * @return 更新された行数
      */
     public int updateBySqlFile(String sqlFile, Map<String, Object> params) {
@@ -186,7 +186,7 @@ public class SBJdbcManager {
     /**
      * DELETE文を実行します。
      *
-     * @param sql    SQL文
+     * @param sql SQL文
      * @param params パラメータ
      * @return 削除された行数
      */
@@ -198,7 +198,7 @@ public class SBJdbcManager {
      * SQLファイルからDELETE文を実行します。
      *
      * @param sqlFile SQLファイルパス
-     * @param params  パラメータ
+     * @param params パラメータ
      * @return 削除された行数
      */
     public int deleteBySqlFile(String sqlFile, Map<String, Object> params) {
@@ -209,38 +209,34 @@ public class SBJdbcManager {
     /**
      * 主キーに基づいてエンティティを検索します。
      *
-     * @param <T>    エンティティの型
+     * @param <T> エンティティの型
      * @param entity 検索対象のPK情報を含むエンティティ
      * @return 検索されたエンティティ、存在しない場合はnull
      * @throws IllegalArgumentException 指定された主キーの数が不正な場合
      */
     @SuppressWarnings("unchecked")
     public <T> Select<T> findByPk(T entity) {
-        return this.<T>select()
-                .from((Class<T>) entity.getClass())
-                .byPrimaryKey(getPrimaryKeyValues(entity));
+        return this.<T>select().from((Class<T>) entity.getClass()).byPrimaryKey(getPrimaryKeyValues(entity));
     }
 
     /**
      * 主キーに基づいてエンティティを検索します。（例外をスローしない）
      *
-     * @param <T>    エンティティの型
+     * @param <T> エンティティの型
      * @param entity 検索対象のPK情報を含むエンティティ
      * @return 検索されたエンティティ、存在しない場合はnull
      * @throws IllegalArgumentException 指定された主キーの数が不正な場合
      */
     @SuppressWarnings("unchecked")
     public <T> Select<T> findByPkNoException(T entity) {
-        return this.<T>select()
-                .from((Class<T>) entity.getClass())
-                .byPrimaryKey(getPrimaryKeyValues(entity))
+        return this.<T>select().from((Class<T>) entity.getClass()).byPrimaryKey(getPrimaryKeyValues(entity))
                 .suppressException();
     }
 
     /**
      * エンティティの全件を検索します。
      *
-     * @param <T>         エンティティの型
+     * @param <T> エンティティの型
      * @param entityClass エンティティのクラス
      * @return エンティティのリスト
      */
@@ -251,7 +247,7 @@ public class SBJdbcManager {
     /**
      * エンティティを新規登録します。
      *
-     * @param <T>    エンティティの型
+     * @param <T> エンティティの型
      * @param entity 登録するエンティティ
      * @return 登録されたエンティティ
      */
@@ -262,8 +258,8 @@ public class SBJdbcManager {
     /**
      * エンティティを新規登録します。
      *
-     * @param <T>                      エンティティの型
-     * @param entity                   登録するエンティティ
+     * @param <T> エンティティの型
+     * @param entity 登録するエンティティ
      * @param isIndependentTransaction 独立したトランザクションで実行するかどうか
      * @return 登録されたエンティティ
      */
@@ -287,8 +283,7 @@ public class SBJdbcManager {
             queryExecutor.execute(sql.toString(), params, INSERT);
 
             @SuppressWarnings("unchecked")
-            Select<T> newSelect = this.<T>select()
-                    .from((Class<T>) entity.getClass())
+            Select<T> newSelect = this.<T>select().from((Class<T>) entity.getClass())
                     .byPrimaryKey(getPrimaryKeyValues(entity));
             return newSelect.getSingleResult();
         });
@@ -297,7 +292,7 @@ public class SBJdbcManager {
     /**
      * 主キーに基づいてエンティティを更新します。
      *
-     * @param <T>    エンティティの型
+     * @param <T> エンティティの型
      * @param entity 更新するエンティティ
      * @return 更新されたエンティティ
      * @throws IllegalArgumentException 主キーが設定されていない場合
@@ -309,8 +304,8 @@ public class SBJdbcManager {
     /**
      * 主キーに基づいてエンティティを更新します。
      *
-     * @param <T>                      エンティティの型
-     * @param entity                   更新するエンティティ
+     * @param <T> エンティティの型
+     * @param entity 更新するエンティティ
      * @param isIndependentTransaction 独立したトランザクションで実行するかどうか
      * @return 更新されたエンティティ
      * @throws IllegalArgumentException 主キーが設定されていない場合
@@ -322,7 +317,7 @@ public class SBJdbcManager {
             Map<String, Object> pkValues = getPrimaryKeyValues(entity);
 
             if (pkValues.isEmpty()) {
-                throw new IllegalArgumentException("主キーが設定されていません");
+                throw new SBIllegalStateException("主キーが設定されていません");
             }
 
             Map<String, Object> params = getEntityParams(entity);
@@ -334,10 +329,7 @@ public class SBJdbcManager {
             // 主キー以外のカラムを更新対象とする
             params.forEach((column, value) -> {
                 if (!pkValues.containsKey(column)) {
-                    sql.append(column)
-                            .append(" = /*")
-                            .append(column)
-                            .append("*/null, ");
+                    sql.append(column).append(" = /*").append(column).append("*/null, ");
                 }
             });
 
@@ -349,21 +341,22 @@ public class SBJdbcManager {
             for (Map.Entry<String, Object> pk : pkValues.entrySet()) {
                 if (pkCount++ > 0)
                     sql.append(" AND ");
-                sql.append(pk.getKey())
-                        .append(" = /*pk")
-                        .append(pkCount)
-                        .append("*/0");
+                sql.append(pk.getKey()).append(" = /*pk").append(pkCount).append("*/0");
                 params.put("pk" + pkCount, pk.getValue());
             }
 
-            queryExecutor.execute(sql.toString(), params, UPDATE);
+            int updatedRows = queryExecutor.execute(sql.toString(), params, UPDATE);
+            if (updatedRows == 0) {
+                throw new SBOptimisticLockException("更新対象のレコードが見つかりませんでした。他のトランザクションによって更新された可能性があります。", entity,
+                        pkValues.keySet().toArray(new String[0]));
+            }
 
-            List<T> newEntity = queryExecutor.executeSelect(
-                    "SELECT * FROM " + tableName + " WHERE " + pkValues.entrySet().stream()
-                            .map(e -> e.getKey() + " = '" + e.getValue() + "'")
-                            .collect(Collectors.joining(" AND ")),
-                    params,
-                    (Class<T>) entity.getClass());
+            List<T> newEntity = queryExecutor
+                    .executeSelect(
+                            "SELECT * FROM " + tableName + " WHERE "
+                                    + pkValues.entrySet().stream().map(e -> e.getKey() + " = '" + e.getValue() + "'")
+                                            .collect(Collectors.joining(" AND ")),
+                            params, (Class<T>) entity.getClass());
             return newEntity.isEmpty() ? null : newEntity.get(0);
         });
     }
@@ -372,14 +365,13 @@ public class SBJdbcManager {
      * エンティティを1件削除します。
      * 
      * <p>
-     * エンティティの主キー情報に基づいて、該当するレコードを削除します。
-     * 主キーが設定されていない場合は例外がスローされます。
+     * エンティティの主キー情報に基づいて、該当するレコードを削除します。 主キーが設定されていない場合は例外がスローされます。
      * </p>
      *
-     * @param <T>    エンティティの型
+     * @param <T> エンティティの型
      * @param entity 削除対象のエンティティ
      * @return 削除された件数
-     * @throws IllegalArgumentException 主キーが設定されていない場合
+     * @throws SBIllegalStateException 主キーが設定されていない場合
      */
     public <T> int delete(T entity) {
         return delete(entity, false);
@@ -389,21 +381,20 @@ public class SBJdbcManager {
      * エンティティを1件削除します。
      * 
      * <p>
-     * エンティティの主キー情報に基づいて、該当するレコードを削除します。
-     * 主キーが設定されていない場合は例外がスローされます。
+     * エンティティの主キー情報に基づいて、該当するレコードを削除します。 主キーが設定されていない場合は例外がスローされます。
      * </p>
      *
-     * @param <T>                      エンティティの型
-     * @param entity                   削除対象のエンティティ
+     * @param <T> エンティティの型
+     * @param entity 削除対象のエンティティ
      * @param isIndependentTransaction 独立したトランザクションで実行するかどうか
      * @return 削除された件数
-     * @throws IllegalArgumentException 主キーが設定されていない場合
+     * @throws SBIllegalStateException 主キーが設定されていない場合
      */
     public <T> int delete(T entity, boolean isIndependentTransaction) {
         return executeWithTransaction(isIndependentTransaction, () -> {
             Map<String, Object> pkValues = getPrimaryKeyValues(entity);
             if (pkValues.isEmpty()) {
-                throw new IllegalArgumentException("主キーが設定されていません");
+                throw new SBIllegalStateException("主キーが設定されていません: " + entity.getClass().getName());
             }
 
             String tableName = getTableName(entity.getClass());
@@ -415,10 +406,7 @@ public class SBJdbcManager {
                 if (pkCount++ > 0) {
                     sql.append(" AND ");
                 }
-                sql.append(pk.getKey())
-                        .append(" = /*pk")
-                        .append(pkCount)
-                        .append("*/0");
+                sql.append(pk.getKey()).append(" = /*pk").append(pkCount).append("*/0");
                 params.put("pk" + pkCount, pk.getValue());
             }
 
@@ -427,11 +415,9 @@ public class SBJdbcManager {
     }
 
     /**
-     * エンティティを登録または更新します。
-     * 主キーが設定されており、レコードが存在する場合は更新を行います。
-     * それ以外の場合は新規登録を行います。
+     * エンティティを登録または更新します。 主キーが設定されており、レコードが存在する場合は更新を行います。 それ以外の場合は新規登録を行います。
      *
-     * @param <T>    エンティティの型
+     * @param <T> エンティティの型
      * @param entity 登録または更新するエンティティ
      * @return 処理されたエンティティ
      */
@@ -440,12 +426,10 @@ public class SBJdbcManager {
     }
 
     /**
-     * エンティティを登録または更新します。
-     * 主キーが設定されており、レコードが存在する場合は更新を行います。
-     * それ以外の場合は新規登録を行います。
+     * エンティティを登録または更新します。 主キーが設定されており、レコードが存在する場合は更新を行います。 それ以外の場合は新規登録を行います。
      *
-     * @param <T>                      エンティティの型
-     * @param entity                   登録または更新するエンティティ
+     * @param <T> エンティティの型
+     * @param entity 登録または更新するエンティティ
      * @param isIndependentTransaction 独立したトランザクションで実行するかどうか
      * @return 処理されたエンティティ
      */
@@ -498,12 +482,12 @@ public class SBJdbcManager {
                     return result;
                 } catch (Exception e) {
                     txOperation.rollback();
-                    throw new RuntimeException("SQL実行エラー", e);
+                    throw new SBSQLException("SQL実行エラー", e);
                 } finally {
                     txOperation.end();
                 }
             } catch (Exception e) {
-                throw new RuntimeException("トランザクション実行エラー", e);
+                throw new SBSQLException("トランザクション実行エラー", e);
             }
         }
 
@@ -514,8 +498,10 @@ public class SBJdbcManager {
 
         try {
             return operation.call();
+        } catch (SBException e) {
+            throw e; // SBExceptionはそのままスロー
         } catch (Exception e) {
-            throw new RuntimeException("SQL実行エラー", e);
+            throw new SBSQLException("SQL実行エラー", e);
         }
     }
 
@@ -531,7 +517,7 @@ public class SBJdbcManager {
         } catch (Exception e) {
             innerManager.txOperation.rollback();
             logger.error("トランザクション実行エラー", e);
-            throw new RuntimeException("トランザクション実行に失敗しました", e);
+            throw new SBTransactionException("トランザクション実行に失敗しました", e);
         } finally {
             innerManager.txOperation.end();
         }
@@ -541,7 +527,7 @@ public class SBJdbcManager {
     /**
      * エンティティに対するSelect操作を開始します。
      * 
-     * @param <T>         エンティティの型
+     * @param <T> エンティティの型
      * @param entityClass エンティティのクラス
      * @return SelectビルダーのFromインスタンス
      */
@@ -552,7 +538,7 @@ public class SBJdbcManager {
     /**
      * UPDATE文の構築を開始します。
      * 
-     * @param <T>         エンティティの型
+     * @param <T> エンティティの型
      * @param entityClass 更新対象のエンティティクラス
      * @return UpdateBuilderインスタンス
      */
@@ -563,7 +549,7 @@ public class SBJdbcManager {
     /**
      * DELETE文の構築を開始します。
      * 
-     * @param <T>         エンティティの型
+     * @param <T> エンティティの型
      * @param entityClass 削除対象のエンティティクラス
      * @return DeleteBuilderインスタンス
      */
@@ -602,7 +588,7 @@ public class SBJdbcManager {
     /**
      * トランザクション処理を実行します。
      *
-     * @param callback                 トランザクションコールバック
+     * @param callback トランザクションコールバック
      * @param isIndependentTransaction 独立したトランザクションで実行するかどうか
      */
     public void transaction(TransactionCallback callback, boolean isIndependentTransaction) {
@@ -612,7 +598,7 @@ public class SBJdbcManager {
                     callback.execute(manager);
                     return null;
                 } catch (Exception e) {
-                    throw new RuntimeException(e);
+                    throw new SBException(e);
                 }
             });
             return;
@@ -623,7 +609,7 @@ public class SBJdbcManager {
             txOperation.commit();
         } catch (Exception e) {
             txOperation.rollback();
-            throw new RuntimeException("トランザクション実行に失敗しました", e);
+            throw new SBTransactionException("トランザクション実行に失敗しました", e);
         } finally {
             txOperation.end();
         }
@@ -633,7 +619,7 @@ public class SBJdbcManager {
     /**
      * エンティティクラスからテーブル名を取得します。
      *
-     * @param <T>         エンティティの型
+     * @param <T> エンティティの型
      * @param entityClass エンティティクラス
      * @return テーブル名
      */
@@ -651,63 +637,59 @@ public class SBJdbcManager {
     /**
      * エンティティからパラメータマップを取得します。
      *
-     * @param <T>    エンティティの型
+     * @param <T> エンティティの型
      * @param entity エンティティ
      * @return パラメータマップ
      */
     private <T> Map<String, Object> getEntityParams(T entity) {
         Map<String, Object> params = new HashMap<>();
-        Arrays.stream(entity.getClass().getDeclaredFields())
-                .forEach(field -> {
-                    try {
-                        field.setAccessible(true);
-                        SBColumnMeta columnMeta = field.getAnnotation(SBColumnMeta.class);
-                        String columnName = (columnMeta != null) ? columnMeta.name() : field.getName();
-                        Object value = null;
+        Arrays.stream(entity.getClass().getDeclaredFields()).forEach(field -> {
+            try {
+                field.setAccessible(true);
+                SBColumnMeta columnMeta = field.getAnnotation(SBColumnMeta.class);
+                String columnName = (columnMeta != null) ? columnMeta.name() : field.getName();
+                Object value = null;
 
-                        // boolean型のフィールドの場合、isXxx形式のgetterメソッドを試す
-                        if (field.getType() == boolean.class || field.getType() == Boolean.class) {
-                            try {
-                                String getterName = "is" + Character.toUpperCase(field.getName().charAt(0))
-                                        + field.getName().substring(1);
-                                java.lang.reflect.Method getter = entity.getClass().getMethod(getterName);
-                                value = getter.invoke(entity);
-                            } catch (NoSuchMethodException e) {
-                                // isXxx形式のgetterメソッドがない場合は、そのままfield.get()を試す
-                                value = field.get(entity);
-                            }
-                        } else {
-                            value = field.get(entity);
-                        }
-                        params.put(columnName, value);
-                    } catch (Exception e) {
-                        throw new RuntimeException("パラメータの取得に失敗しました", e);
+                // boolean型のフィールドの場合、isXxx形式のgetterメソッドを試す
+                if (field.getType() == boolean.class || field.getType() == Boolean.class) {
+                    try {
+                        String getterName = "is" + Character.toUpperCase(field.getName().charAt(0))
+                                + field.getName().substring(1);
+                        java.lang.reflect.Method getter = entity.getClass().getMethod(getterName);
+                        value = getter.invoke(entity);
+                    } catch (NoSuchMethodException e) {
+                        // isXxx形式のgetterメソッドがない場合は、そのままfield.get()を試す
+                        value = field.get(entity);
                     }
-                });
+                } else {
+                    value = field.get(entity);
+                }
+                params.put(columnName, value);
+            } catch (Exception e) {
+                throw new SBException("パラメータの取得に失敗しました", e);
+            }
+        });
         return params;
     }
 
     /**
      * エンティティクラスから主キー情報を取得します。
      *
-     * @param <T>         エンティティの型
+     * @param <T> エンティティの型
      * @param entityClass エンティティクラス
      * @return 主キー情報
      */
     private <T> PrimaryKeyInfo getPrimaryKeyInfo(Class<T> entityClass) {
-        List<Field> pkFields = Arrays.stream(entityClass.getDeclaredFields())
-                .filter(field -> {
-                    SBColumnMeta columnMeta = field.getAnnotation(SBColumnMeta.class);
-                    return columnMeta != null && columnMeta.primaryKey();
-                })
-                .collect(Collectors.toList());
+        List<Field> pkFields = Arrays.stream(entityClass.getDeclaredFields()).filter(field -> {
+            SBColumnMeta columnMeta = field.getAnnotation(SBColumnMeta.class);
+            return columnMeta != null && columnMeta.primaryKey();
+        }).collect(Collectors.toList());
 
         if (pkFields.isEmpty()) {
-            throw new IllegalStateException("主キーが見つかりません: " + entityClass.getName());
+            throw new SBIllegalStateException("主キーが見つかりません: " + entityClass.getName());
         }
 
-        List<String> pkColumnNames = pkFields.stream()
-                .map(field -> field.getAnnotation(SBColumnMeta.class).name())
+        List<String> pkColumnNames = pkFields.stream().map(field -> field.getAnnotation(SBColumnMeta.class).name())
                 .collect(Collectors.toList());
 
         return new PrimaryKeyInfo(pkFields, pkColumnNames);
@@ -716,7 +698,7 @@ public class SBJdbcManager {
     /**
      * エンティティから主キーの値を取得します。
      *
-     * @param <T>    エンティティの型
+     * @param <T> エンティティの型
      * @param entity エンティティ
      * @return 主キーの値
      */
@@ -729,7 +711,7 @@ public class SBJdbcManager {
                 SBColumnMeta columnMeta = field.getAnnotation(SBColumnMeta.class);
                 pkValues.put(columnMeta.name(), field.get(entity));
             } catch (Exception e) {
-                throw new RuntimeException("主キーの値の取得に失敗しました", e);
+                throw new SBEntityException("主キーの値の取得に失敗しました", e);
             }
         });
         return pkValues;
@@ -846,18 +828,19 @@ public class SBJdbcManager {
          * 検索結果を1件返します。
          *
          * @return 検索結果
-         * @throws IllegalStateException 結果が0件または2件以上の場合
+         * @throws SBNoResultException 検索結果が0件の場合
+         * @throws SBNonUniqueResultException 検索結果が複数件存在する場合
          */
         public T getSingleResult() {
             List<T> results = getResultList();
             if (results.isEmpty()) {
                 if (!suppressException) {
-                    throw new IllegalStateException("結果が見つかりません");
+                    throw new SBNoResultException("検索結果が0件でした");
                 }
                 return null;
             }
             if (results.size() > 1) {
-                throw new IllegalStateException("複数の結果が見つかりました");
+                throw new SBNonUniqueResultException("検索結果が複数件存在します: " + results.size() + "件");
             }
             return results.get(0);
         }
@@ -888,8 +871,7 @@ public class SBJdbcManager {
                             sqlBuilder.append(" AND ");
                         }
                         String propertyName = pkInfo.columnNames.get(i);
-                        sqlBuilder.append(propertyName)
-                                .append(" = /*pk").append(i).append("*/").append(i);
+                        sqlBuilder.append(propertyName).append(" = /*pk").append(i).append("*/").append(i);
                         params.put("pk" + i, primaryKeys.get(propertyName));
                     }
 
@@ -901,10 +883,10 @@ public class SBJdbcManager {
                 }
             } catch (Exception e) {
                 if (suppressException) {
-                    logger.warn("検索実行中の例外を抑制: {}", e.getMessage());
+                    logger.warn("検索実行中の例外を抑制します。: {}", e.getMessage());
                     return Collections.emptyList();
                 }
-                throw new RuntimeException("検索実行中にエラーが発生しました", e);
+                throw new SBException("検索実行中にエラーが発生しました", e);
             }
         }
     }

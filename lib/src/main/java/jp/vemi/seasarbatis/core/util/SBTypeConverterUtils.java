@@ -17,6 +17,8 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.base.CaseFormat;
 
+import jp.vemi.seasarbatis.exception.SBTypeConversionException;
+
 /**
  * MyBatis型ハンドラを使用したエンティティ変換ユーティリティクラスです。<br>
  * SQL実行結果のMapからエンティティへの変換処理を提供します。<br>
@@ -157,7 +159,8 @@ public class SBTypeConverterUtils {
             }
         } catch (Exception e) {
             if (throwOnError) {
-                throw new IllegalArgumentException("数値への変換に失敗しました: " + number, e);
+                throw new SBTypeConversionException(
+                    String.format("数値[%s]から[%s]型への変換に失敗しました", number, targetType.getSimpleName()), e);
             }
             logger.warn("数値への変換に失敗しました: {}", number);
         }
@@ -208,14 +211,15 @@ public class SBTypeConverterUtils {
             }
         } catch (Exception e) {
             if (throwOnError) {
-                throw new IllegalArgumentException("Timestamp への変換に失敗しました: " + value, e);
+                throw new SBTypeConversionException(
+                    String.format("値[%s]のTimestampへの変換に失敗しました", value), e);
             }
             logger.warn("Timestamp への変換に失敗しました: {}", value);
         }
         if (throwOnError) {
-            throw new IllegalArgumentException("Timestamp への変換不可: " + value);
+            throw new SBTypeConversionException(
+                String.format("値[%s]はTimestamp型に変換できません", value));
         }
-        // 返却値は Timestamp 型でなければならないため、変換不可の場合は常に null を返す
         return null;
     }
 
@@ -243,12 +247,14 @@ public class SBTypeConverterUtils {
             }
         } catch (Exception e) {
             if (throwOnError) {
-                throw new IllegalArgumentException("Date への変換に失敗しました: " + value, e);
+                throw new SBTypeConversionException(
+                    String.format("値[%s]のDate型への変換に失敗しました", value), e);
             }
             logger.warn("Date への変換に失敗しました: {}", value);
         }
         if (throwOnError) {
-            throw new IllegalArgumentException("Date への変換不可: " + value);
+            throw new SBTypeConversionException(
+                String.format("値[%s]はDate型に変換できません", value));
         }
         return null;
     }
@@ -258,7 +264,7 @@ public class SBTypeConverterUtils {
      * throwOnError が true の場合、変換不可時に例外を投げます。
      *
      * @param value        変換対象の値
-     * @param throwOnError 変換失敗時に例外を投げる場合は true、そうでなければ false
+     * @param throwOnError 変換失敗時に例例外を投げる場合は true、そうでなければ false
      * @return 変換後の Time 値
      */
     private static Time convertToTime(Object value, boolean throwOnError) {
@@ -274,12 +280,14 @@ public class SBTypeConverterUtils {
             }
         } catch (Exception e) {
             if (throwOnError) {
-                throw new IllegalArgumentException("Time への変換に失敗しました: " + value, e);
+                throw new SBTypeConversionException(
+                    String.format("値[%s]のTime型への変換に失敗しました", value), e);
             }
             logger.warn("Time への変換に失敗しました: {}", value);
         }
         if (throwOnError) {
-            throw new IllegalArgumentException("Time への変換不可: " + value);
+            throw new SBTypeConversionException(
+                String.format("値[%s]はTime型に変換できません", value));
         }
         return null;
     }
