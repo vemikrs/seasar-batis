@@ -44,8 +44,8 @@ public class SpringJdbcManager extends SBJdbcManager {
 
     @Override
     @Transactional
-    public <T> T updateByPk(T entity) {
-        return super.updateByPk(entity);
+    public <T> T update(T entity) {
+        return super.update(entity);
     }
 
     @Override
@@ -56,7 +56,7 @@ public class SpringJdbcManager extends SBJdbcManager {
 
     @Override
     @Transactional
-    public <T> void deleteByPk(Class<T> entityClass, Object... primaryKeys) {
-        super.deleteByPk(entityClass, primaryKeys);
+    public <T> int delete(T entity) {
+        return super.delete(entity);
     }
 }

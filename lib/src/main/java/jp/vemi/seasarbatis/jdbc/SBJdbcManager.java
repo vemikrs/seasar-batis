@@ -302,8 +302,8 @@ public class SBJdbcManager {
      * @return 更新されたエンティティ
      * @throws IllegalArgumentException 主キーが設定されていない場合
      */
-    public <T> T updateByPk(T entity) {
-        return updateByPk(entity, false);
+    public <T> T update(T entity) {
+        return update(entity, false);
     }
 
     /**
@@ -316,7 +316,7 @@ public class SBJdbcManager {
      * @throws IllegalArgumentException 主キーが設定されていない場合
      */
     @SuppressWarnings("unchecked")
-    public <T> T updateByPk(T entity, boolean isIndependentTransaction) {
+    public <T> T update(T entity, boolean isIndependentTransaction) {
         return executeWithTransaction(isIndependentTransaction, () -> {
             String tableName = getTableName(entity.getClass());
             Map<String, Object> pkValues = getPrimaryKeyValues(entity);
@@ -369,48 +369,60 @@ public class SBJdbcManager {
     }
 
     /**
-     * 主キーに基づいてエンティティを削除します。
+     * エンティティを1件削除します。
+     * 
+     * <p>
+     * エンティティの主キー情報に基づいて、該当するレコードを削除します。
+     * 主キーが設定されていない場合は例外がスローされます。
+     * </p>
      *
-     * @param <T>         エンティティの型
-     * @param entityClass エンティティのクラス
-     * @param primaryKeys 主キーの値（複数可）
+     * @param <T>    エンティティの型
+     * @param entity 削除対象のエンティティ
+     * @return 削除された件数
+     * @throws IllegalArgumentException 主キーが設定されていない場合
      */
-    public <T> void deleteByPk(Class<T> entityClass, Object... primaryKeys) {
-        deleteByPk(entityClass, false, primaryKeys);
+    public <T> int delete(T entity) {
+        return delete(entity, false);
     }
 
     /**
-     * 主キーに基づいてエンティティを削除します。
+     * エンティティを1件削除します。
+     * 
+     * <p>
+     * エンティティの主キー情報に基づいて、該当するレコードを削除します。
+     * 主キーが設定されていない場合は例外がスローされます。
+     * </p>
      *
      * @param <T>                      エンティティの型
-     * @param entityClass              エンティティのクラス
+     * @param entity                   削除対象のエンティティ
      * @param isIndependentTransaction 独立したトランザクションで実行するかどうか
-     * @param primaryKeys              主キーの値（複数可）
-     * @throws IllegalArgumentException 指定された主キーの数が不正な場合
+     * @return 削除された件数
+     * @throws IllegalArgumentException 主キーが設定されていない場合
      */
-    public <T> void deleteByPk(Class<T> entityClass, boolean isIndependentTransaction, Object... primaryKeys) {
-        executeWithTransaction(isIndependentTransaction, () -> {
-            PrimaryKeyInfo pkInfo = getPrimaryKeyInfo(entityClass);
-            if (primaryKeys.length != pkInfo.columnNames.size()) {
-                throw new IllegalArgumentException(
-                        String.format("主キーの数が一致しません。期待値: %d, 実際: %d",
-                                pkInfo.columnNames.size(), primaryKeys.length));
+    public <T> int delete(T entity, boolean isIndependentTransaction) {
+        return executeWithTransaction(isIndependentTransaction, () -> {
+            Map<String, Object> pkValues = getPrimaryKeyValues(entity);
+            if (pkValues.isEmpty()) {
+                throw new IllegalArgumentException("主キーが設定されていません");
             }
 
-            String tableName = getTableName(entityClass);
+            String tableName = getTableName(entity.getClass());
             StringBuilder sql = new StringBuilder("DELETE FROM " + tableName + " WHERE ");
 
             Map<String, Object> params = new HashMap<>();
-            for (int i = 0; i < primaryKeys.length; i++) {
-                if (i > 0)
+            int pkCount = 0;
+            for (Map.Entry<String, Object> pk : pkValues.entrySet()) {
+                if (pkCount++ > 0) {
                     sql.append(" AND ");
-                sql.append(pkInfo.columnNames.get(i))
-                        .append(" = /*pk").append(i).append("*/0");
-                params.put("pk" + i, primaryKeys[i]);
+                }
+                sql.append(pk.getKey())
+                        .append(" = /*pk")
+                        .append(pkCount)
+                        .append("*/0");
+                params.put("pk" + pkCount, pk.getValue());
             }
 
-            queryExecutor.execute(sql.toString(), params, DELETE);
-            return null;
+            return queryExecutor.execute(sql.toString(), params, DELETE);
         });
     }
 
@@ -467,7 +479,7 @@ public class SBJdbcManager {
 
             if (count > 0) {
                 logger.debug("レコードが存在するため、UPDATEを実行します");
-                return updateByPk(entity, isIndependentTransaction);
+                return update(entity, isIndependentTransaction);
             } else {
                 logger.debug("レコードが存在しないため、INSERTを実行します");
                 return insert(entity, isIndependentTransaction);
@@ -475,7 +487,6 @@ public class SBJdbcManager {
         });
     }
 
-    // 修正: executeWithTransactionメソッド
     private <T> T executeWithTransaction(boolean isIndependentTransaction, Callable<T> operation) {
         if (isIndependentTransaction) {
             try {
