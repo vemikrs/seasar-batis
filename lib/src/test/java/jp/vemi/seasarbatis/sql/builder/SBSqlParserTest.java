@@ -1,5 +1,6 @@
 package jp.vemi.seasarbatis.sql.builder;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -48,8 +49,9 @@ class SBSqlParserTest {
 
         ParsedSql parsedSql = SBSqlParser.parse(sql, params);
         String result = parsedSql.getSql();
-        assertTrue(result.contains("amount > ?"));
-        assertTrue(result.contains("score >= ?"));
+        System.out.println(result);
+        assertTrue(result.contains("amount > #{amount}"));
+        assertTrue(result.contains("score >= #{score}"));
         assertFalse(result.contains("/*"));
         assertFalse(result.contains("*/"));
     }
@@ -68,37 +70,37 @@ class SBSqlParserTest {
 
         ParsedSql parsedSql = SBSqlParser.parse(sql, params);
         String result = parsedSql.getSql();
-        assertTrue(result.contains("status = ?"));
-        assertTrue(result.contains("FIND_IN_SET(?, user_type)"));
+        System.out.println(result);
+        assertTrue(result.contains("status = #{status}"));
+        assertTrue(result.contains("FIND_IN_SET(#{user_type}, user_type)"));
     }
 
     @Test
     void testDateTimeConditions() {
         Map<String, Object> params = new HashMap<>();
-        params.put("birth_date", Date.valueOf("1990-01-01"));
-        params.put("created_at", "2023-01-01 10:00:00");
+        params.put("birthDate", Date.valueOf("1990-01-01"));
+        params.put("createdAt", "2023-01-01 10:00:00");
 
         String sql = """
                 SELECT * FROM sbtest_users
                 /*BEGIN*/
                 WHERE 1=1
-                /*IF birth_date != null*/
-                AND birth_date >= /*birth_date*/'1990-01-01'
+                /*IF birthDate != null*/
+                AND birth_date >= /*birthDate*/'1990-01-01'
                 /*END*/
-                /*IF created_at != null*/
-                AND created_at >= /*created_at*/'2023-01-01 10:00:00'
+                /*IF createdAt != null*/
+                AND created_at >= /*createdAt*/'2023-01-01 10:00:00'
                 /*END*/
                 /*END*/
                 """;
 
         ParsedSql parsedSql = SBSqlParser.parse(sql, params);
         String result = parsedSql.getSql();
-        String expectedSql = result.replaceAll("\\s+", " ").trim();
-
-        assertTrue(expectedSql.contains("birth_date >= ?"));
-        assertTrue(expectedSql.contains("created_at >= ?"));
-        assertFalse(expectedSql.contains("/*"));
-        assertFalse(expectedSql.contains("*/"));
+        System.out.println(result);
+        assertTrue(result.contains("birth_date >= #{birthDate}"));
+        assertTrue(result.contains("created_at >= #{createdAt}"));
+        assertFalse(result.contains("/*"));
+        assertFalse(result.contains("*/"));
     }
 
     @Test
@@ -122,8 +124,8 @@ class SBSqlParserTest {
 
         ParsedSql parsedSql = SBSqlParser.parse(sql, params);
         String result = parsedSql.getSql();
-        assertTrue(result.contains("id = ?"));
-        assertTrue(result.contains("name = ?"));
+        assertTrue(result.contains("id = #{id}"));
+        assertTrue(result.contains("name = #{name}"));
         assertFalse(result.contains("/*BEGIN*/"));
         assertFalse(result.contains("/*END*/"));
     }
@@ -164,9 +166,9 @@ class SBSqlParserTest {
     void testAdvancedBindings() {
         Map<String, Object> params = new HashMap<>();
         params.put("ids", Arrays.asList(1, 2, 3));
-        params.put("name_pattern", "test");
-        params.put("min_amount", -1000.00);
-        params.put("nullable_status", null);
+        params.put("namePattern", "test");
+        params.put("minAmount", -1000.00);
+        params.put("nullableStatus", null);
 
         String sql = """
                 SELECT * FROM sbtest_users
@@ -175,26 +177,51 @@ class SBSqlParserTest {
                 /*IF ids != null*/
                 AND id IN /*ids*/(1,2,3)
                 /*END*/
-                /*IF name_pattern != null*/
-                AND name LIKE /*name_pattern*/'%test%'
+                /*IF namePattern != null*/
+                AND name LIKE /*namePattern*/'%test%'
                 /*END*/
-                /*IF min_amount != null*/
-                AND amount > /*min_amount*/-500.00
+                /*IF minAmount != null*/
+                AND amount > /*minAmount*/-500.00
                 /*END*/
-                /*IF nullable_status == null*/
-                AND status IS /*nullable_status*/null
+                /*IF nullableStatus == null*/
+                AND status IS /*nullableStatus*/null
                 /*END*/
                 /*END*/
                 """;
 
         ParsedSql parsedSql = SBSqlParser.parse(sql, params);
         String result = parsedSql.getSql();
-        assertTrue(result.contains("id IN ?"));
-        assertTrue(result.contains("name LIKE ?"));
-        assertTrue(result.contains("amount > ?"));
-        assertTrue(result.contains("status IS ?"));
+        System.out.println(result);
+        assertTrue(result.contains("id IN #{ids}"));
+        assertTrue(result.contains("name LIKE #{namePattern}"));
+        assertTrue(result.contains("amount > #{minAmount}"));
+        assertTrue(result.contains("status IS #{nullableStatus}"));
         assertFalse(result.contains("/*"));
         assertFalse(result.contains("*/"));
+    }
+
+    @Test
+    void testDummyValuePatterns() {
+        Map<String, Object> params = Map.of("id", 1, "name", "test user", "createAt", "2025-01-01 10:00:00");
+
+        // ダミー値なしのパターン
+        assertEquals(normalizeWhitespace("SELECT * FROM users WHERE id = #{id} AND name = #{name}"),
+                normalizeWhitespace(SBSqlParser
+                        .parse("SELECT * FROM users WHERE id = /*id*/ AND name = /*name*/'test'", params).getSql()));
+
+        // 日時など空白を含むダミー値のパターン
+        assertEquals(normalizeWhitespace("SELECT * FROM users WHERE created_at >= #{createAt}"),
+                normalizeWhitespace(SBSqlParser
+                        .parse("SELECT * FROM users" + " WHERE created_at >= /*createAt*/'2025-01-01 10:00:00'", params)
+                        .getSql()));
+
+        // 複数行のSQLのパターン
+        assertEquals(
+                normalizeWhitespace(
+                        "SELECT * FROM users WHERE id = #{id} AND name LIKE #{name} AND created_at >= #{createAt}"),
+                normalizeWhitespace(SBSqlParser.parse("SELECT *\n" + "  FROM users\n" + " WHERE id = /*id*/1\n"
+                        + "   AND name LIKE /*name*/'%test%'\n"
+                        + "   AND created_at >= /*createAt*/'2025-01-01 10:00:00'", params).getSql()));
     }
 
     @Test
@@ -234,10 +261,29 @@ class SBSqlParserTest {
         assertFalse(result.contains("DROP"));
         assertFalse(result.contains("UNION"));
 
-        // 全てのパラメータが?に置換されていることを確認
-        assertTrue(result.matches(".*id = \\?.*"));
-        assertTrue(result.matches(".*name = \\?.*"));
-        assertTrue(result.matches(".*type = \\?.*"));
-        assertTrue(result.matches(".*status = \\?.*"));
+        // 全てのパラメータがMyBatisのバインド変数形式に置換されていることを確認
+        assertTrue(result.contains("id = #{malicious_id}"), "malicious_idが正しく置換されていること");
+        assertTrue(result.contains("name = #{union_attack}"), "union_attackが正しく置換されていること");
+        assertTrue(result.contains("type = #{comment_attack}"), "comment_attackが正しく置換されていること");
+        assertTrue(result.contains("status = #{quote_attack}"), "quote_attackが正しく置換されていること");
+    }
+
+    /**
+     * SQL文の空白文字を正規化します。
+     * 
+     * <p>
+     * 以下の正規化を行います：
+     * <ul>
+     * <li>改行を空白に変換</li>
+     * <li>連続する空白を1つの空白に置換</li>
+     * <li>文字列の前後の空白を削除</li>
+     * </ul>
+     * </p>
+     *
+     * @param sql 正規化対象のSQL文
+     * @return 正規化されたSQL文
+     */
+    private String normalizeWhitespace(String sql) {
+        return sql.replaceAll("\\s+", " ").trim();
     }
 }
