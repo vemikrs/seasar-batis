@@ -18,8 +18,7 @@ import jp.vemi.seasarbatis.core.sql.ParsedSql;
  * SQLの解析とバインドパラメータの解決を行うクラスです。
  * 
  * <p>
- * S2JDBC形式のSQLコメントを解析し、MyBatisで実行可能なSQLに変換します。
- * この変換では以下の処理を行います：
+ * S2JDBC形式のSQLコメントを解析し、MyBatisで実行可能なSQLに変換します。 この変換では以下の処理を行います：
  * <ul>
  * <li>IF条件コメントの評価による動的SQL生成</li>
  * <li>バインド変数コメントの解決</li>
@@ -43,11 +42,10 @@ public class SBSqlParser {
      * <li>IF条件コメントを評価し、条件に応じてSQL文を構築</li>
      * <li>バインド変数コメントをMyBatisの#{param}形式に変換</li>
      * </ol>
-     * コメントの後に続く値は、型推論のためのダミー値として扱われ、
-     * 実際のSQLからは除去されます。
+     * コメントの後に続く値は、型推論のためのダミー値として扱われ、 実際のSQLからは除去されます。
      * </p>
      *
-     * @param sql        SQLクエリ文字列
+     * @param sql SQLクエリ文字列
      * @param parameters バインドパラメータ
      * @return 変換されたSQLとパラメータ情報を含むParsedSqlオブジェクト
      */
@@ -61,7 +59,7 @@ public class SBSqlParser {
     /**
      * バインド変数コメントを解決します。
      * 
-     * @param sql        SQLクエリ文字列
+     * @param sql SQLクエリ文字列
      * @param parameters バインドパラメータ
      * @return 変換されたSQLとパラメータ情報を含むParsedSqlオブジェクト
      */
@@ -74,14 +72,21 @@ public class SBSqlParser {
         List<String> paramNames = new ArrayList<>();
 
         int position = 0;
+
         while (true) {
             int commentStart = sql.indexOf("/*", position);
             if (commentStart < 0) {
-                processedSql.append(sql.substring(position));
+                if (position < sql.length()) {
+                    processedSql.append(sql.substring(position));
+                }
                 break;
             }
 
-            processedSql.append(sql.substring(position, commentStart));
+            String beforeComment = sql.substring(position, commentStart);
+
+            if (!beforeComment.trim().isEmpty()) {
+                processedSql.append(beforeComment);
+            }
 
             int commentEnd = sql.indexOf("*/", commentStart + 2);
             if (commentEnd < 0) {
@@ -89,20 +94,18 @@ public class SBSqlParser {
             }
 
             String paramName = sql.substring(commentStart + 2, commentEnd).trim();
-
-            // コメント後のダミー値をスキップ（型推論用）
-            position = skipTypeDummyValue(sql, commentEnd + 2);
+            paramNames.add(paramName);
 
             if (parameters.containsKey(paramName)) {
-                processedSql.append("#{").append(paramName).append("}");
-                paramNames.add(paramName);
+                processedSql.append("#{").append(paramName).append("} ");
             }
+
+            position = skipTypeDummyValue(sql, commentEnd + 2);
         }
 
-        return ParsedSql.builder()
-                .sql(processedSql.toString())
-                .parameterNames(paramNames)
-                .build();
+        String finalSql = processedSql.toString().replaceAll("\\s{2,}", " ").trim();
+
+        return ParsedSql.builder().sql(finalSql).parameterNames(paramNames).build();
     }
 
     /**
@@ -111,28 +114,42 @@ public class SBSqlParser {
      * <p>
      * S2JDBCの仕様に従い、以下の処理を行います：
      * <ul>
-     * <li>コメントの直後の空白文字はスキップしない（そのまま維持）</li>
-     * <li>ダミー値が存在しない場合もエラーとしない</li>
-     * <li>ダミー値が存在する場合は、その値をスキップ</li>
+     * <li>シングルクォートで囲まれた値は型推論用のダミー値として扱い、スキップします</li>
+     * <li>数値やnullなどの直値もダミー値として扱い、スキップします</li>
+     * <li>ダミー値が存在しない場合はエラーとしません</li>
      * </ul>
      * </p>
+     *
+     * @param sql SQLクエリ文字列
+     * @param start 検索開始位置
+     * @return スキップ後の位置
      */
     private static int skipTypeDummyValue(String sql, int start) {
         int i = start;
-
-        // コメント直後の文字を確認
-        if (i >= sql.length() || Character.isWhitespace(sql.charAt(i))) {
-            // 空白文字か終端の場合は、ダミー値なしとして扱う
+        if (i >= sql.length()) {
             return i;
         }
 
-        // ダミー値のスキップ
-        while (i < sql.length()) {
-            char c = sql.charAt(i);
-            if (Character.isWhitespace(c) || c == ',' || c == ')' || c == '(' || c == ';') {
-                break;
-            }
+        char c = sql.charAt(i);
+
+        // シングルクォートで囲まれた値のスキップ
+        if (c == '\'') {
             i++;
+            while (i < sql.length()) {
+                if (sql.charAt(i) == '\'') {
+                    return i + 1;
+                }
+                i++;
+            }
+        } else {
+            // 空白、コンマ、括弧、セミコロン、シングルクォート以外の文字をスキップ
+            while (i < sql.length()) {
+                c = sql.charAt(i);
+                if (Character.isWhitespace(c) || c == ',' || c == ')' || c == '(' || c == ';' || c == '\'') {
+                    break;
+                }
+                i++;
+            }
         }
         return i;
     }
@@ -143,7 +160,7 @@ public class SBSqlParser {
      * ネストされた条件とBEGIN/ENDブロックをサポートします。
      * </p>
      *
-     * @param sql        SQLクエリ文字列
+     * @param sql SQLクエリ文字列
      * @param parameters バインドパラメータ
      * @return IF条件の評価結果を反映したSQL文字列
      */
@@ -217,20 +234,18 @@ public class SBSqlParser {
      * AND/OR演算子をサポートします。
      * </p>
      *
-     * @param condition  条件式文字列
+     * @param condition 条件式文字列
      * @param parameters バインドパラメータ
      * @return 条件式の評価結果
      */
     protected static boolean evaluateCondition(String condition, Map<String, Object> parameters) {
         if (condition.contains(" AND ")) {
             String[] conditions = condition.split(" AND ");
-            return Arrays.stream(conditions)
-                    .allMatch(c -> evaluateSingleCondition(c.trim(), parameters));
+            return Arrays.stream(conditions).allMatch(c -> evaluateSingleCondition(c.trim(), parameters));
         }
         if (condition.contains(" OR ")) {
             String[] conditions = condition.split(" OR ");
-            return Arrays.stream(conditions)
-                    .anyMatch(c -> evaluateSingleCondition(c.trim(), parameters));
+            return Arrays.stream(conditions).anyMatch(c -> evaluateSingleCondition(c.trim(), parameters));
         }
         return evaluateSingleCondition(condition, parameters);
     }
@@ -263,25 +278,25 @@ public class SBSqlParser {
         Object paramValue = parameters.get(paramName);
 
         switch (operator) {
-            case "==":
-            case "=":
-                return String.valueOf(paramValue).equals(value);
-            case "!=":
-                return !String.valueOf(paramValue).equals(value);
-            case ">":
-                return compareValues(paramValue, value) > 0;
-            case "<":
-                return compareValues(paramValue, value) < 0;
-            case ">=":
-                return compareValues(paramValue, value) >= 0;
-            case "<=":
-                return compareValues(paramValue, value) <= 0;
-            case "null":
-                return paramValue == null;
-            case "!null":
-                return paramValue != null;
-            default:
-                return false;
+        case "==":
+        case "=":
+            return String.valueOf(paramValue).equals(value);
+        case "!=":
+            return !String.valueOf(paramValue).equals(value);
+        case ">":
+            return compareValues(paramValue, value) > 0;
+        case "<":
+            return compareValues(paramValue, value) < 0;
+        case ">=":
+            return compareValues(paramValue, value) >= 0;
+        case "<=":
+            return compareValues(paramValue, value) <= 0;
+        case "null":
+            return paramValue == null;
+        case "!null":
+            return paramValue != null;
+        default:
+            return false;
         }
     }
 
