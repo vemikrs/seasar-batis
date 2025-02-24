@@ -9,4 +9,5 @@ package jp.vemi.seasarbatis.core.sql;
 @lombok.AllArgsConstructor(access = lombok.AccessLevel.PRIVATE)
 public class ParsedSql {
     private String sql;
+    private java.util.List<String> parameterNames;
 }

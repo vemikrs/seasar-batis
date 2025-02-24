@@ -8,8 +8,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Stack;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,58 +15,41 @@ import org.slf4j.LoggerFactory;
 import jp.vemi.seasarbatis.core.sql.ParsedSql;
 
 /**
- * SQLクエリの解析と変換を行うユーティリティクラス。
- * Seasar2形式のSQLコメントを解析し、実行可能なSQLに変換します。
+ * SQLの解析とバインドパラメータの解決を行うクラスです。
  * 
  * <p>
- * 主な機能：
+ * S2JDBC形式のSQLコメントを解析し、MyBatisで実行可能なSQLに変換します。
+ * この変換では以下の処理を行います：
  * <ul>
- * <li>動的SQLの条件判定（IF条件）</li>
- * <li>バインドパラメータの解決</li>
- * <li>SQLの正規化</li>
+ * <li>IF条件コメントの評価による動的SQL生成</li>
+ * <li>バインド変数コメントの解決</li>
+ * <li>BEGIN/ENDブロックの処理</li>
  * </ul>
- * </p>
- * 
- * <p>
- * 使用例：
- * 
- * <pre>{@code
- * String sql = "SELECT * FROM users WHERE &#47;*IF age != null*&#47; age > &#47;*age*&#47;20 &#47;*END*&#47;";
- * Map<String, Object> params = new HashMap<>();
- * params.put("age", 25);
- * ParsedSql parsedSql = SBSqlParser.parse(sql, params);
- * // 実行結果：
- * // SQL: SELECT * FROM users WHERE age > #{age}
- * // パラメータ: [25]
- * }</pre>
  * </p>
  * 
  * @author H.Kurosawa
  * @version 1.0.0
+ * @since 2025/01/01
  */
 public class SBSqlParser {
     private static final Logger logger = LoggerFactory.getLogger(SBSqlParser.class);
 
-    // バインド変数のパターン定義
-    private static final List<Pattern> BIND_PATTERNS = Arrays.asList(
-            Pattern.compile("/\\*\\s*([^\\s*]*)\\s*\\*/['\"]([^'\"]*)['\"]"), // 文字列リテラル
-            Pattern.compile("/\\*\\s*([^\\s*]*)\\s*\\*/(-?[0-9.]+)"), // 数値リテラル
-            Pattern.compile("/\\*\\s*([^\\s*]*)\\s*\\*/\\s*\\(([^)]*)\\)"), // IN句
-            Pattern.compile("/\\*\\s*([^\\s*]*)\\s*\\*/\\s*null"), // NULL値
-            Pattern.compile("/\\*\\s*([^\\s*]*)\\s*\\*/([^\\s,)]+)") // その他
-    );
-
     /**
-     * SQLを解析し、バインドパラメータを解決します。
+     * SQLを解析し、実行可能な形式に変換します。
+     * 
      * <p>
-     * IF条件を評価した後、Seasar2形式のSQLコメントで記述されたバインド変数を
-     * MyBatis形式の「#{paramName}」に書き換えます。<br>
-     * 変換された順序でパラメータはリストとして保持されます。
+     * 以下の順序で処理を行います：
+     * <ol>
+     * <li>IF条件コメントを評価し、条件に応じてSQL文を構築</li>
+     * <li>バインド変数コメントをMyBatisの#{param}形式に変換</li>
+     * </ol>
+     * コメントの後に続く値は、型推論のためのダミー値として扱われ、
+     * 実際のSQLからは除去されます。
      * </p>
      *
-     * @param sql        解析対象のSQL文
+     * @param sql        SQLクエリ文字列
      * @param parameters バインドパラメータ
-     * @return 処理済みのSQL文と順序付けられたパラメータを保持するParsedSqlオブジェクト
+     * @return 変換されたSQLとパラメータ情報を含むParsedSqlオブジェクト
      */
     public static ParsedSql parse(String sql, Map<String, Object> parameters) {
         // IF条件の評価
@@ -78,42 +59,68 @@ public class SBSqlParser {
     }
 
     /**
-     * バインド変数を解決します。<br>
-     * Seasar2形式のバインド変数（パターン1～パターン5）をサポートし、<br>
-     * 置換された順序で変数のリストをorderedParametersに追加します。<br>
-     * この実装では、PreparedStatement用の「?」ではなく、MyBatis形式の「#{paramName}」に置換します。
-     *
-     * @param sql        SQL文
+     * バインド変数コメントを解決します。
+     * 
+     * @param sql        SQLクエリ文字列
      * @param parameters バインドパラメータ
-     * @return 処理済みのSQL文と順序付けられたパラメータを保持するParsedSqlオブジェクト
+     * @return 変換されたSQLとパラメータ情報を含むParsedSqlオブジェクト
      */
     protected static ParsedSql processBindVariables(String sql, Map<String, Object> parameters) {
-        String processedSql = sql;
-        List<Object> orderedParams = new ArrayList<>();
-
-        for (Pattern pattern : BIND_PATTERNS) {
-            Matcher m = pattern.matcher(processedSql);
-            StringBuffer sb = new StringBuffer();
-
-            while (m.find()) {
-                String paramName = m.group(1).trim();
-                if (parameters.containsKey(paramName)) {
-                    // MyBatis形式のバインド変数に置換
-                    m.appendReplacement(sb, "#{" + paramName + "}");
-                    // パラメータを順序通りに保持
-                    orderedParams.add(parameters.get(paramName));
-                }
-            }
-            m.appendTail(sb);
-            processedSql = sb.toString();
+        if (!sql.contains("/*")) {
+            return ParsedSql.builder().sql(sql).build();
         }
 
-        // SQL文の整形
-        processedSql = cleanupSql(processedSql);
+        StringBuilder processedSql = new StringBuilder();
+        List<String> paramNames = new ArrayList<>();
+
+        int position = 0;
+        while (true) {
+            int commentStart = sql.indexOf("/*", position);
+            if (commentStart < 0) {
+                processedSql.append(sql.substring(position));
+                break;
+            }
+
+            processedSql.append(sql.substring(position, commentStart));
+
+            int commentEnd = sql.indexOf("*/", commentStart + 2);
+            if (commentEnd < 0) {
+                throw new IllegalArgumentException("コメントが閉じられていません: " + sql);
+            }
+
+            String paramName = sql.substring(commentStart + 2, commentEnd).trim();
+
+            // コメント後のダミー値をスキップ（型推論用）
+            position = skipTypeDummyValue(sql, commentEnd + 2);
+
+            if (parameters.containsKey(paramName)) {
+                processedSql.append("#{").append(paramName).append("}");
+                paramNames.add(paramName);
+            }
+        }
 
         return ParsedSql.builder()
-                .sql(processedSql)
+                .sql(processedSql.toString())
+                .parameterNames(paramNames)
                 .build();
+    }
+
+    /**
+     * 型推論用のダミー値をスキップします。
+     */
+    private static int skipTypeDummyValue(String sql, int start) {
+        int i = start;
+        while (i < sql.length() && Character.isWhitespace(sql.charAt(i))) {
+            i++;
+        }
+        while (i < sql.length()) {
+            char c = sql.charAt(i);
+            if (Character.isWhitespace(c) || c == ',' || c == ')' || c == '(' || c == ';') {
+                break;
+            }
+            i++;
+        }
+        return i;
     }
 
     /**
