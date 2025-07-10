@@ -53,7 +53,7 @@ public class SBTransactionOperation {
      */
     public void begin() {
         if (isActive) {
-            throw new SBTransactionException("トランザクションが既に開始されています");
+            throw new SBTransactionException("transaction.error.already.started");
         }
         SqlSession session = sqlSessionFactory.openSession(false);
         currentSession.set(session);
@@ -68,7 +68,7 @@ public class SBTransactionOperation {
      */
     public void begin(SqlSession session) {
         if (isActive) {
-            throw new SBTransactionException("トランザクションが既に開始されています");
+            throw new SBTransactionException("transaction.error.already.started");
         }
         currentSession.set(session);
         this.isActive = true;
@@ -79,7 +79,7 @@ public class SBTransactionOperation {
      */
     public void commit() {
         if (!isActive) {
-            throw new SBTransactionException("トランザクションが開始されていません");
+            throw new SBTransactionException("transaction.error.not.started");
         }
         currentSession.get().commit();
     }
@@ -89,7 +89,7 @@ public class SBTransactionOperation {
      */
     public void rollback() {
         if (!isActive) {
-            throw new SBTransactionException("トランザクションが開始されていません");
+            throw new SBTransactionException("transaction.error.not.started");
         }
         currentSession.get().rollback();
     }
@@ -116,7 +116,7 @@ public class SBTransactionOperation {
      */
     public SqlSession getCurrentSession() {
         if (!isActive) {
-            throw new SBTransactionException("トランザクションが開始されていません");
+            throw new SBTransactionException("transaction.error.not.started");
         }
         return currentSession.get();
     }
@@ -138,7 +138,7 @@ public class SBTransactionOperation {
      */
     public String createSavepoint() {
         if (!isActive()) {
-            throw new SBTransactionException("トランザクションが開始されていません");
+            throw new SBTransactionException("transaction.error.not.started");
         }
 
         String savepointId = UUID.randomUUID().toString();
@@ -147,7 +147,7 @@ public class SBTransactionOperation {
         try {
             savepoint = connection.setSavepoint();
         } catch (SQLException e) {
-            throw new SBTransactionException("セーブポイントの作成に失敗しました", e);
+            throw new SBTransactionException("transaction.error.savepoint.creation", e);
         }
         savepoints.put(savepointId, savepoint);
         logger.debug("セーブポイントを作成しました: {}", savepointId);
@@ -163,14 +163,14 @@ public class SBTransactionOperation {
     public void releaseSavepoint(String savepointId) {
         Savepoint savepoint = savepoints.remove(savepointId);
         if (savepoint == null) {
-            throw new SBTransactionException("セーブポイントが見つかりません: " + savepointId);
+            throw new SBTransactionException("transaction.error.savepoint.not.found", savepointId);
         }
 
         try {
             currentSession.get().getConnection().releaseSavepoint(savepoint);
             logger.debug("セーブポイントを解放しました: {}", savepointId);
         } catch (SQLException e) {
-            throw new SBTransactionException("セーブポイントの解放に失敗しました: " + savepointId, e);
+            throw new SBTransactionException("transaction.error.savepoint.release", e, savepointId);
         }
     }
 
@@ -183,14 +183,14 @@ public class SBTransactionOperation {
     public void rollbackToSavepoint(String savepointId) {
         Savepoint savepoint = savepoints.get(savepointId);
         if (savepoint == null) {
-            throw new SBTransactionException("セーブポイントが見つかりません: " + savepointId);
+            throw new SBTransactionException("transaction.error.savepoint.not.found", savepointId);
         }
 
         try {
             currentSession.get().getConnection().rollback(savepoint);
             logger.debug("セーブポイントまでロールバックしました: {}", savepointId);
         } catch (SQLException e) {
-            throw new SBTransactionException("セーブポイントへのロールバックに失敗しました: " + savepointId, e);
+            throw new SBTransactionException("transaction.error.savepoint.rollback", e, savepointId);
         }
     }
 }

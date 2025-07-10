@@ -52,7 +52,7 @@ public class SBTransactionManager {
             case NESTED:
                 return executeNested(operation);
             default:
-                throw new SBTransactionException("未対応の伝播タイプです: " + propagationType);
+                throw new SBTransactionException("transaction.error.unsupported.propagation", propagationType);
         }
     }
 
@@ -69,7 +69,7 @@ public class SBTransactionManager {
                 return result;
             } catch (Exception e) {
                 independentTxOperation.rollback();
-                throw new SBTransactionException("トランザクション実行エラー", e);
+                throw new SBTransactionException("transaction.error.execution", e);
             } finally {
                 independentTxOperation.end();
             }
@@ -92,7 +92,7 @@ public class SBTransactionManager {
             if (isNewTransaction) {
                 txOperation.rollback();
             }
-            throw new SBTransactionException("トランザクション実行エラー", e);
+            throw new SBTransactionException("transaction.error.execution", e);
         } finally {
             if (isNewTransaction) {
                 txOperation.end();
@@ -145,7 +145,7 @@ public class SBTransactionManager {
             return result;
         } catch (Exception e) {
             txOperation.rollbackToSavepoint(savepoint);
-            throw new SBTransactionException("ネストされたトランザクションの実行に失敗しました", e);
+            throw new SBTransactionException("transaction.error.nested.execution", e);
         }
     }
 

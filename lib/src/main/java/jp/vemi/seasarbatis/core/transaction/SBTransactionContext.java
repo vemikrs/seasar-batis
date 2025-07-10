@@ -3,6 +3,8 @@
  */
 package jp.vemi.seasarbatis.core.transaction;
 
+import jp.vemi.seasarbatis.core.i18n.SBMessageManager;
+
 /**
  * トランザクション操作のコンテキストを管理するクラスです。
  * <p>
@@ -61,7 +63,7 @@ public class SBTransactionContext {
             if (e instanceof RuntimeException) {
                 throw (RuntimeException) e;
             }
-            throw new RuntimeException("処理実行中にエラーが発生しました", e);
+            throw new RuntimeException(SBMessageManager.getInstance().getMessage("transaction.error.processing"), e);
         } finally {
             if (previousOperation != null) {
                 setCurrentOperation(previousOperation);
