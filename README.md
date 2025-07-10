@@ -241,3 +241,55 @@ List<User> users = jdbcManager.selectBySqlFile(
 ### サンプル設定
 完全な設定例は`src/test/resources/sample-generatorConfig.xml`を参照してください。
 
+## 国際化（i18n）対応
+
+SeasarBatisは日本語と英語に対応した国際化機能を提供します。
+
+### ロケールの設定
+
+```java
+import jp.vemi.seasarbatis.core.i18n.SBLocaleConfig;
+
+// 日本語に設定
+SBLocaleConfig.getInstance().setJapanese();
+
+// 英語に設定
+SBLocaleConfig.getInstance().setEnglish();
+
+// システムのデフォルトロケールに設定
+SBLocaleConfig.getInstance().setDefault();
+```
+
+### メッセージの取得
+
+```java
+import jp.vemi.seasarbatis.core.i18n.SBMessageManager;
+
+SBMessageManager messageManager = SBMessageManager.getInstance();
+
+// 基本的なメッセージの取得
+String message = messageManager.getMessage("transaction.error.execution");
+
+// パラメータ付きメッセージの取得
+String paramMessage = messageManager.getMessage("transaction.error.savepoint.not.found", "SP001");
+```
+
+### 例外メッセージの国際化
+
+SeasarBatisの例外クラスは自動的に現在のロケールに応じたメッセージを表示します：
+
+```java
+// ロケールが日本語の場合：「トランザクション実行エラー」
+// ロケールが英語の場合：「Transaction execution error」
+throw new SBTransactionException("transaction.error.execution");
+```
+
+### 対応メッセージ
+
+- トランザクション関連エラー
+- エンティティ操作エラー
+- SQL実行エラー
+- 一般的なエラーメッセージ
+
+詳細なメッセージ一覧は`src/main/resources/jp/vemi/seasarbatis/messages.properties`と`messages_ja.properties`を参照してください。
+
