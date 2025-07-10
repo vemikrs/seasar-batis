@@ -192,6 +192,47 @@ int updatedRows = jdbcManager
     .execute();
 ```
 
+### Batch Operations
+SBJdbcManagerは効率的なバッチ処理もサポートしています：
+
+```java
+// 複数エンティティの一括登録
+List<User> users = Arrays.asList(
+    new User("Alice", 25),
+    new User("Bob", 30),
+    new User("Charlie", 35)
+);
+List<User> insertedUsers = jdbcManager.batchInsert(users);
+
+// 複数エンティティの一括更新
+users.forEach(user -> user.setStatus("ACTIVE"));
+List<Integer> updateCounts = jdbcManager.batchUpdate(users);
+
+// 複数エンティティの一括削除
+List<Integer> deleteCounts = jdbcManager.batchDelete(users);
+
+// 複数エンティティの一括登録または更新
+List<User> mixedUsers = Arrays.asList(
+    existingUser,  // 存在する場合は更新
+    newUser1,      // 存在しない場合は登録
+    newUser2       // 存在しない場合は登録
+);
+List<User> processedUsers = jdbcManager.batchInsertOrUpdate(mixedUsers);
+
+// 独立したトランザクションでのバッチ処理
+List<User> results = jdbcManager.batchInsert(users, true);
+```
+
+**バッチ処理の利点：**
+- 複数のエンティティを一度のトランザクションで処理するため、パフォーマンスが向上
+- トランザクションの境界が明確で、データ整合性が保たれる
+- エラー発生時は、バッチ全体がロールバックされる
+
+**使用上の注意：**
+- 大量のデータを処理する場合は、メモリ使用量に注意してください
+- `isIndependentTransaction`フラグを使用して、既存のトランザクションとの分離レベルを制御できます
+- 空のリストやnullを渡すと`SBIllegalStateException`がスローされます
+
 ### トランザクション管理
 トランザクションをラムダ式で簡単に扱えます：
 
