@@ -559,16 +559,11 @@ public class SBJdbcManager {
      * @param isIndependentTransaction 独立したトランザクションで実行するかどうか
      */
     public void transaction(SBTransactionCallback callback, boolean isIndependentTransaction) {
-        try {
-            txManager.execute(isIndependentTransaction ? PropagationType.REQUIRES_NEW : PropagationType.REQUIRED,
-                    () -> {
-                        callback.execute(this);
-                        return null;
-                    });
-        } catch (RuntimeException e) {
-            txManager.rollback();
-            throw e;
-        }
+        txManager.execute(isIndependentTransaction ? PropagationType.REQUIRES_NEW : PropagationType.REQUIRED,
+                () -> {
+                    callback.execute(this);
+                    return null;
+                });
     }
 
     // ---------- Getter ----------

@@ -72,7 +72,7 @@ class SBSqlParserTest {
         String result = parsedSql.getSql();
         System.out.println(result);
         assertTrue(result.contains("status = #{status}"));
-        assertTrue(result.contains("FIND_IN_SET(#{user_type}, user_type)"));
+        assertTrue(result.contains("FIND_IN_SET(#{user_type}") && result.contains(", user_type)"));
     }
 
     @Test

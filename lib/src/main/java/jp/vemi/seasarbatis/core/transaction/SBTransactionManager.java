@@ -58,17 +58,19 @@ public class SBTransactionManager {
 
     public <T> T executeWithTransaction(boolean isIndependentTransaction, Callable<T> operation) {
         if (isIndependentTransaction) {
+            // 独立トランザクションの場合は新しいTransactionOperationインスタンスを作成
+            SBTransactionOperation independentTxOperation = new SBTransactionOperation(sqlSessionFactory);
             SqlSession session = sqlSessionFactory.openSession(false);
-            txOperation.begin(session);
+            independentTxOperation.begin(session);
             try {
                 T result = operation.call();
-                txOperation.commit();
+                independentTxOperation.commit();
                 return result;
             } catch (Exception e) {
-                txOperation.rollback();
+                independentTxOperation.rollback();
                 throw new SBTransactionException("トランザクション実行エラー", e);
             } finally {
-                txOperation.end();
+                independentTxOperation.end();
             }
         }
 
