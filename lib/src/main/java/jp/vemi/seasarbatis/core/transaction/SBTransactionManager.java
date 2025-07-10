@@ -63,7 +63,8 @@ public class SBTransactionManager {
             SqlSession session = sqlSessionFactory.openSession(false);
             independentTxOperation.begin(session);
             try {
-                T result = operation.call();
+                // 独立トランザクションのコンテキストを設定して実行
+                T result = SBTransactionContext.withOperation(independentTxOperation, operation);
                 independentTxOperation.commit();
                 return result;
             } catch (Exception e) {
@@ -80,6 +81,8 @@ public class SBTransactionManager {
         }
 
         try {
+            // メイントランザクションのコンテキストを設定
+            SBTransactionContext.setCurrentOperation(txOperation);
             T result = operation.call();
             if (isNewTransaction) {
                 txOperation.commit();
@@ -93,6 +96,7 @@ public class SBTransactionManager {
         } finally {
             if (isNewTransaction) {
                 txOperation.end();
+                SBTransactionContext.clearCurrentOperation();
             }
         }
     }
@@ -166,5 +170,14 @@ public class SBTransactionManager {
      */
     public void rollback() {
         txOperation.rollback();
+    }
+
+    /**
+     * 内部で使用されるトランザクション操作を取得します。
+     * 
+     * @return トランザクション操作
+     */
+    public SBTransactionOperation getTransactionOperation() {
+        return txOperation;
     }
 }

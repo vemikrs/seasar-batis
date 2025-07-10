@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="jp.vemi.seasarbatis.test.TestUserMapper">
+    
+    <!-- Insert user -->
+    <insert id="insertUser" parameterType="jp.vemi.seasarbatis.core.transaction.SBTransactionManagerDatabaseTest$TestUser">
+        INSERT INTO test_users (id, name, email, active)
+        VALUES (#{id}, #{name}, #{email}, #{active})
+    </insert>
+    
+    <!-- Select user by ID -->
+    <select id="selectUserById" parameterType="Long" resultType="jp.vemi.seasarbatis.core.transaction.SBTransactionManagerDatabaseTest$TestUser">
+        SELECT id, name, email, active 
+        FROM test_users 
+        WHERE id = #{id}
+    </select>
+    
+</mapper>

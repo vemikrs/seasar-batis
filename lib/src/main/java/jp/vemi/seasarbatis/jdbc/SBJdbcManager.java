@@ -56,7 +56,6 @@ public class SBJdbcManager {
     private static final Logger logger = LoggerFactory.getLogger(SBJdbcManager.class);
 
     private final SqlSessionFactory sqlSessionFactory;
-    private final SBTransactionOperation txOperation;
     private final SBTransactionManager txManager;
     private final SBQueryExecutor queryExecutor;
 
@@ -67,9 +66,8 @@ public class SBJdbcManager {
      */
     public SBJdbcManager(SqlSessionFactory sqlSessionFactory) {
         this.sqlSessionFactory = sqlSessionFactory;
-        this.txOperation = new SBTransactionOperation(sqlSessionFactory);
         this.txManager = new SBTransactionManager(sqlSessionFactory);
-        this.queryExecutor = new SBQueryExecutor(sqlSessionFactory.getConfiguration(), txOperation);
+        this.queryExecutor = new SBQueryExecutor(sqlSessionFactory.getConfiguration(), txManager.getTransactionOperation());
     }
 
     /**
@@ -476,7 +474,7 @@ public class SBJdbcManager {
      * @return 型安全な検索ビルダー
      */
     public <T> SBSelect<T> select() {
-        return new SBSelect<>(sqlSessionFactory, queryExecutor, txOperation);
+        return new SBSelect<>(sqlSessionFactory, queryExecutor, txManager.getTransactionOperation());
     }
 
     /**

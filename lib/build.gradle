@@ -26,6 +26,13 @@ dependencies {
     // Database dependencies for testing.
     testImplementation 'com.h2database:h2:2.3.232'
     testImplementation 'mysql:mysql-connector-java:8.0.33'
+    
+    // TestContainers for integration testing
+    testImplementation 'org.testcontainers:junit-jupiter:1.19.3'
+    testImplementation 'org.testcontainers:mysql:1.19.3'
+    
+    // AssertJ for fluent assertions
+    testImplementation 'org.assertj:assertj-core:3.24.2'
 
     // This dependency is exported to consumers, that is to say found on their compile classpath.
     api 'org.mybatis:mybatis:3.5.13'
