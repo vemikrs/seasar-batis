@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="jp.vemi.seasarbatis.test.RollbackTestMapper">
+    
+    <!-- Insert rollback test data -->
+    <insert id="insertRollbackTest" parameterType="jp.vemi.seasarbatis.core.transaction.SBTransactionManagerRollbackTest$RollbackTestData">
+        INSERT INTO rollback_test (id, name)
+        VALUES (#{id}, #{name})
+    </insert>
+    
+    <!-- Select rollback test data by ID -->
+    <select id="selectRollbackTestById" parameterType="Long" resultType="jp.vemi.seasarbatis.core.transaction.SBTransactionManagerRollbackTest$RollbackTestData">
+        SELECT id, name
+        FROM rollback_test 
+        WHERE id = #{id}
+    </select>
+    
+</mapper>

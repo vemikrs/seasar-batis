@@ -58,17 +58,20 @@ public class SBTransactionManager {
 
     public <T> T executeWithTransaction(boolean isIndependentTransaction, Callable<T> operation) {
         if (isIndependentTransaction) {
+            // 独立トランザクションの場合は新しいTransactionOperationインスタンスを作成
+            SBTransactionOperation independentTxOperation = new SBTransactionOperation(sqlSessionFactory);
             SqlSession session = sqlSessionFactory.openSession(false);
-            txOperation.begin(session);
+            independentTxOperation.begin(session);
             try {
-                T result = operation.call();
-                txOperation.commit();
+                // 独立トランザクションのコンテキストを設定して実行
+                T result = SBTransactionContext.withOperation(independentTxOperation, operation);
+                independentTxOperation.commit();
                 return result;
             } catch (Exception e) {
-                txOperation.rollback();
+                independentTxOperation.rollback();
                 throw new SBTransactionException("トランザクション実行エラー", e);
             } finally {
-                txOperation.end();
+                independentTxOperation.end();
             }
         }
 
@@ -78,6 +81,8 @@ public class SBTransactionManager {
         }
 
         try {
+            // メイントランザクションのコンテキストを設定
+            SBTransactionContext.setCurrentOperation(txOperation);
             T result = operation.call();
             if (isNewTransaction) {
                 txOperation.commit();
@@ -91,6 +96,7 @@ public class SBTransactionManager {
         } finally {
             if (isNewTransaction) {
                 txOperation.end();
+                SBTransactionContext.clearCurrentOperation();
             }
         }
     }
@@ -164,5 +170,14 @@ public class SBTransactionManager {
      */
     public void rollback() {
         txOperation.rollback();
+    }
+
+    /**
+     * 内部で使用されるトランザクション操作を取得します。
+     * 
+     * @return トランザクション操作
+     */
+    public SBTransactionOperation getTransactionOperation() {
+        return txOperation;
     }
 }

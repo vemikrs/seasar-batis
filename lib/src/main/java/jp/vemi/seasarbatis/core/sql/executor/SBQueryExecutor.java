@@ -20,6 +20,7 @@ import jp.vemi.seasarbatis.core.sql.ProcessedSql;
 import jp.vemi.seasarbatis.core.sql.loader.SBSqlFileLoader;
 import jp.vemi.seasarbatis.core.sql.processor.SBSqlProcessor;
 import jp.vemi.seasarbatis.core.transaction.SBTransactionOperation;
+import jp.vemi.seasarbatis.core.transaction.SBTransactionContext;
 import jp.vemi.seasarbatis.core.util.SBTypeConverterUtils;
 import jp.vemi.seasarbatis.exception.SBIllegalStateException;
 import jp.vemi.seasarbatis.exception.SBSQLException;
@@ -130,7 +131,13 @@ public class SBQueryExecutor {
             ProcessedSql processedSql = sqlProcessor.process(sql, parameters);
             logger.debug("Executing {} SQL: {}", commandType, processedSql);
 
-            SqlSession session = txOperation.getCurrentSession();
+            // コンテキストから現在のトランザクション操作を取得、なければデフォルトを使用
+            SBTransactionOperation currentTxOperation = SBTransactionContext.getCurrentOperation();
+            if (currentTxOperation == null) {
+                currentTxOperation = txOperation;
+            }
+            
+            SqlSession session = currentTxOperation.getCurrentSession();
             String statement = "jp.vemi.seasarbatis.prepared" + commandType;
 
             if (CommandType.SELECT.equals(commandType)) {
