@@ -21,5 +21,6 @@
     <mappers>
         <mapper resource="jp/vemi/seasarbatis/sql/executor/SBQueryExecutor.xml" />
         <mapper resource="jp/vemi/seasarbatis/test/TestUserMapper.xml" />
+        <mapper resource="jp/vemi/seasarbatis/test/RollbackTestMapper.xml" />
     </mappers>
 </configuration>
