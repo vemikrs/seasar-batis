@@ -13,6 +13,7 @@ import static jp.vemi.seasarbatis.core.sql.CommandType.UPDATE;
 
 import java.io.IOException;
 import java.io.Reader;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -615,6 +616,11 @@ public class SBJdbcManager {
     }
 
     // ---------- Getter ----------
+    /**
+     * トランザクションマネージャーを取得します。
+     *
+     * @return {@link SBTransactionManager}
+     */
     public SBTransactionManager getTransactionManager() {
         return this.txManager;
     }
@@ -626,6 +632,206 @@ public class SBJdbcManager {
      */
     public SBOptimisticLockConfig getOptimisticLockConfig() {
         return this.optimisticLockConfig;
+    }
+
+    // ---------- Batch Operations ----------
+    /**
+     * 複数のエンティティを一括登録します。
+     * 
+     * <p>
+     * バッチ処理により、効率的に複数のエンティティを一度に登録できます。
+     * </p>
+     *
+     * @param <T>      エンティティの型
+     * @param entities 登録するエンティティのリスト
+     * @return 処理されたエンティティのリスト
+     * @throws SBIllegalStateException エンティティリストが空またはnullの場合
+     */
+    public <T> List<T> batchInsert(List<T> entities) {
+        return batchInsert(entities, false);
+    }
+
+    /**
+     * 複数のエンティティを一括登録します。
+     * 
+     * <p>
+     * バッチ処理により、効率的に複数のエンティティを一度に登録できます。
+     * </p>
+     *
+     * @param <T>                      エンティティの型
+     * @param entities                 登録するエンティティのリスト
+     * @param isIndependentTransaction 独立したトランザクションで実行するかどうか
+     * @return 処理されたエンティティのリスト
+     * @throws SBIllegalStateException エンティティリストが空またはnullの場合
+     */
+    public <T> List<T> batchInsert(List<T> entities, boolean isIndependentTransaction) {
+        if (entities == null || entities.isEmpty()) {
+            throw new SBIllegalStateException("エンティティリストが空です");
+        }
+
+        return executeWithTransaction(isIndependentTransaction, () -> {
+            logger.debug("バッチINSERT実行開始: {} 件", entities.size());
+            
+            List<T> results = new ArrayList<>();
+
+            for (T entity : entities) {
+                T result = insert(entity, false); // 個別トランザクションは使わない
+                results.add(result);
+            }
+
+            logger.info("バッチINSERT実行完了: {} 件", results.size());
+            return results;
+        });
+    }
+
+    /**
+     * 複数のエンティティを一括更新します。
+     * 
+     * <p>
+     * バッチ処理により、効率的に複数のエンティティを一度に更新できます。
+     * </p>
+     *
+     * @param <T>      エンティティの型
+     * @param entities 更新するエンティティのリスト
+     * @return 更新された件数のリスト
+     * @throws SBIllegalStateException エンティティリストが空またはnullの場合、または主キーが設定されていない場合
+     */
+    public <T> List<Integer> batchUpdate(List<T> entities) {
+        return batchUpdate(entities, false);
+    }
+
+    /**
+     * 複数のエンティティを一括更新します。
+     * 
+     * <p>
+     * バッチ処理により、効率的に複数のエンティティを一度に更新できます。
+     * </p>
+     *
+     * @param <T>                      エンティティの型
+     * @param entities                 更新するエンティティのリスト
+     * @param isIndependentTransaction 独立したトランザクションで実行するかどうか
+     * @return 更新された件数のリスト
+     * @throws SBIllegalStateException エンティティリストが空またはnullの場合、または主キーが設定されていない場合
+     */
+    public <T> List<Integer> batchUpdate(List<T> entities, boolean isIndependentTransaction) {
+        if (entities == null || entities.isEmpty()) {
+            throw new SBIllegalStateException("エンティティリストが空です");
+        }
+
+        return executeWithTransaction(isIndependentTransaction, () -> {
+            logger.debug("バッチUPDATE実行開始: {} 件", entities.size());
+            
+            List<Integer> results = new ArrayList<>();
+
+            for (T entity : entities) {
+                // 個別に更新を実行し、結果を収集
+                update(entity, false); // 個別トランザクションは使わない
+                results.add(1); // 更新成功時は1を追加
+            }
+
+            logger.info("バッチUPDATE実行完了: {} 件", results.size());
+            return results;
+        });
+    }
+
+    /**
+     * 複数のエンティティを一括削除します。
+     * 
+     * <p>
+     * バッチ処理により、効率的に複数のエンティティを一度に削除できます。
+     * </p>
+     *
+     * @param <T>      エンティティの型
+     * @param entities 削除するエンティティのリスト
+     * @return 削除された件数のリスト
+     * @throws SBIllegalStateException エンティティリストが空またはnullの場合、または主キーが設定されていない場合
+     */
+    public <T> List<Integer> batchDelete(List<T> entities) {
+        return batchDelete(entities, false);
+    }
+
+    /**
+     * 複数のエンティティを一括削除します。
+     * 
+     * <p>
+     * バッチ処理により、効率的に複数のエンティティを一度に削除できます。
+     * </p>
+     *
+     * @param <T>                      エンティティの型
+     * @param entities                 削除するエンティティのリスト
+     * @param isIndependentTransaction 独立したトランザクションで実行するかどうか
+     * @return 削除された件数のリスト
+     * @throws SBIllegalStateException エンティティリストが空またはnullの場合、または主キーが設定されていない場合
+     */
+    public <T> List<Integer> batchDelete(List<T> entities, boolean isIndependentTransaction) {
+        if (entities == null || entities.isEmpty()) {
+            throw new SBIllegalStateException("エンティティリストが空です");
+        }
+
+        return executeWithTransaction(isIndependentTransaction, () -> {
+            logger.debug("バッチDELETE実行開始: {} 件", entities.size());
+            
+            List<Integer> results = new ArrayList<>();
+
+            for (T entity : entities) {
+                int deleted = delete(entity, false); // 個別トランザクションは使わない
+                results.add(deleted);
+            }
+
+            logger.info("バッチDELETE実行完了: {} 件", results.size());
+            return results;
+        });
+    }
+
+    /**
+     * 複数のエンティティを一括で登録または更新します。
+     * 
+     * <p>
+     * 各エンティティについて、主キーが設定されており、レコードが存在する場合は更新を行います。
+     * それ以外の場合は新規登録を行います。バッチ処理により、効率的に処理されます。
+     * </p>
+     *
+     * @param <T>      エンティティの型
+     * @param entities 登録または更新するエンティティのリスト
+     * @return 処理されたエンティティのリスト
+     * @throws SBIllegalStateException エンティティリストが空またはnullの場合
+     */
+    public <T> List<T> batchInsertOrUpdate(List<T> entities) {
+        return batchInsertOrUpdate(entities, false);
+    }
+
+    /**
+     * 複数のエンティティを一括で登録または更新します。
+     * 
+     * <p>
+     * 各エンティティについて、主キーが設定されており、レコードが存在する場合は更新を行います。
+     * それ以外の場合は新規登録を行います。バッチ処理により、効率的に処理されます。
+     * </p>
+     *
+     * @param <T>                      エンティティの型
+     * @param entities                 登録または更新するエンティティのリスト
+     * @param isIndependentTransaction 独立したトランザクションで実行するかどうか
+     * @return 処理されたエンティティのリスト
+     * @throws SBIllegalStateException エンティティリストが空またはnullの場合
+     */
+    public <T> List<T> batchInsertOrUpdate(List<T> entities, boolean isIndependentTransaction) {
+        if (entities == null || entities.isEmpty()) {
+            throw new SBIllegalStateException("エンティティリストが空です");
+        }
+
+        return executeWithTransaction(isIndependentTransaction, () -> {
+            logger.debug("バッチINSERT_OR_UPDATE実行開始: {} 件", entities.size());
+            
+            List<T> results = new ArrayList<>();
+
+            for (T entity : entities) {
+                T result = insertOrUpdate(entity, false); // 個別トランザクションは使わない
+                results.add(result);
+            }
+
+            logger.info("バッチINSERT_OR_UPDATE実行完了: {} 件", results.size());
+            return results;
+        });
     }
 
     // ---------- Utility ----------

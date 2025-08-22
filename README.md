@@ -192,6 +192,47 @@ int updatedRows = jdbcManager
     .execute();
 ```
 
+### Batch Operations
+SBJdbcManagerは効率的なバッチ処理もサポートしています：
+
+```java
+// 複数エンティティの一括登録
+List<User> users = Arrays.asList(
+    new User("Alice", 25),
+    new User("Bob", 30),
+    new User("Charlie", 35)
+);
+List<User> insertedUsers = jdbcManager.batchInsert(users);
+
+// 複数エンティティの一括更新
+users.forEach(user -> user.setStatus("ACTIVE"));
+List<Integer> updateCounts = jdbcManager.batchUpdate(users);
+
+// 複数エンティティの一括削除
+List<Integer> deleteCounts = jdbcManager.batchDelete(users);
+
+// 複数エンティティの一括登録または更新
+List<User> mixedUsers = Arrays.asList(
+    existingUser,  // 存在する場合は更新
+    newUser1,      // 存在しない場合は登録
+    newUser2       // 存在しない場合は登録
+);
+List<User> processedUsers = jdbcManager.batchInsertOrUpdate(mixedUsers);
+
+// 独立したトランザクションでのバッチ処理
+List<User> results = jdbcManager.batchInsert(users, true);
+```
+
+**バッチ処理の利点：**
+- 複数のエンティティを一度のトランザクションで処理するため、パフォーマンスが向上
+- トランザクションの境界が明確で、データ整合性が保たれる
+- エラー発生時は、バッチ全体がロールバックされる
+
+**使用上の注意：**
+- 大量のデータを処理する場合は、メモリ使用量に注意してください
+- `isIndependentTransaction`フラグを使用して、既存のトランザクションとの分離レベルを制御できます
+- 空のリストやnullを渡すと`SBIllegalStateException`がスローされます
+
 ### トランザクション管理
 トランザクションをラムダ式で簡単に扱えます：
 
@@ -240,4 +281,56 @@ List<User> users = jdbcManager.selectBySqlFile(
 
 ### サンプル設定
 完全な設定例は`src/test/resources/sample-generatorConfig.xml`を参照してください。
+
+## 国際化（i18n）対応
+
+SeasarBatisは日本語と英語に対応した国際化機能を提供します。
+
+### ロケールの設定
+
+```java
+import jp.vemi.seasarbatis.core.i18n.SBLocaleConfig;
+
+// 日本語に設定
+SBLocaleConfig.getInstance().setJapanese();
+
+// 英語に設定
+SBLocaleConfig.getInstance().setEnglish();
+
+// システムのデフォルトロケールに設定
+SBLocaleConfig.getInstance().setDefault();
+```
+
+### メッセージの取得
+
+```java
+import jp.vemi.seasarbatis.core.i18n.SBMessageManager;
+
+SBMessageManager messageManager = SBMessageManager.getInstance();
+
+// 基本的なメッセージの取得
+String message = messageManager.getMessage("transaction.error.execution");
+
+// パラメータ付きメッセージの取得
+String paramMessage = messageManager.getMessage("transaction.error.savepoint.not.found", "SP001");
+```
+
+### 例外メッセージの国際化
+
+SeasarBatisの例外クラスは自動的に現在のロケールに応じたメッセージを表示します：
+
+```java
+// ロケールが日本語の場合：「トランザクション実行エラー」
+// ロケールが英語の場合：「Transaction execution error」
+throw new SBTransactionException("transaction.error.execution");
+```
+
+### 対応メッセージ
+
+- トランザクション関連エラー
+- エンティティ操作エラー
+- SQL実行エラー
+- 一般的なエラーメッセージ
+
+詳細なメッセージ一覧は`src/main/resources/jp/vemi/seasarbatis/messages.properties`と`messages_ja.properties`を参照してください。
 
