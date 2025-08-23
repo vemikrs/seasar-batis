@@ -26,7 +26,7 @@ CREATE TABLE sbtest_users (
 
     -- 列挙型
     status ENUM('ACTIVE', 'INACTIVE', 'DELETED'),
-    user_type SET('ADMIN', 'USER', 'GUEST'),
+    user_type SET('ADMIN', 'USER', 'GUEST', 'VIP'),
     
     -- JSON型 (MySQL 5.7以降)
     preferences JSON,
