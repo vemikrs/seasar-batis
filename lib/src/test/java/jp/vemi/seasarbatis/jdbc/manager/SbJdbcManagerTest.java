@@ -36,21 +36,39 @@ import jp.vemi.seasarbatis.test.entity.TestSbUser;
 class SbJdbcManagerTest {
 
     private SBJdbcManager jdbcManager;
+    private static boolean databaseInitialized = false;
 
     @BeforeEach
     void setUp() throws Exception {
-        SBJdbcManagerFactory factory = new SBJdbcManagerFactory("mybatis-test-config.xml");
+        // ローカル開発ではH2を使用し、CI環境ではMySQLを使用
+        String configFile = System.getProperty("test.database", "h2").equals("mysql") 
+            ? "mybatis-test-config.xml" 
+            : "mybatis-h2-test-config.xml";
+        
+        SBJdbcManagerFactory factory = new SBJdbcManagerFactory(configFile);
         jdbcManager = factory.create();
 
-        // initializeDatabase();
+        // 初回のみデータベース初期化を実行
+        if (!databaseInitialized) {
+            initializeDatabase();
+            databaseInitialized = true;
+        }
     }
 
     @SuppressWarnings("unused")
     private void initializeDatabase() throws Exception {
+        // H2使用時とMySQL使用時で異なるDDLを使用
+        String databaseType = System.getProperty("test.database", "h2");
+        String schemaFile = databaseType.equals("mysql") 
+            ? "/ddl/01_create_test_schema.sql" 
+            : "/ddl/01_create_h2_schema.sql";
+        String dataFile = databaseType.equals("mysql") 
+            ? "/ddl/02_insert_initial_data.sql" 
+            : "/ddl/02_insert_h2_data.sql";
 
         // スキーマ作成と初期データの投入
-        executeSqlScript("/ddl/01_create_test_schema.sql");
-        executeSqlScript("/ddl/02_insert_initial_data.sql");
+        executeSqlScript(schemaFile);
+        executeSqlScript(dataFile);
     }
 
     private void executeSqlScript(String resourcePath) throws Exception {
@@ -77,6 +95,21 @@ class SbJdbcManagerTest {
                     }
                 }
                 session.commit();
+                
+                // H2の場合、データが正しく挿入されたか確認
+                if (resourcePath.contains("insert")) {
+                    try {
+                        Statement verifyStmt = conn.createStatement();
+                        java.sql.ResultSet rs = verifyStmt.executeQuery("SELECT COUNT(*) as cnt FROM sbtest_users");
+                        if (rs.next()) {
+                            System.out.println("[INFO] テーブル内データ件数: " + rs.getInt("cnt"));
+                        }
+                        rs.close();
+                        verifyStmt.close();
+                    } catch (Exception e) {
+                        System.out.println("[WARN] データ件数確認でエラー: " + e.getMessage());
+                    }
+                }
             }
         }
     }

@@ -37,6 +37,7 @@ jobs:
           ./gradlew clean test --continue || echo "Some tests failed - this is expected in CI environment without database setup"
         env:
           SPRING_PROFILES_ACTIVE: test
+          test.database: h2
 
       - name: Check test results
         run: |

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE configuration PUBLIC "-//mybatis.org//DTD Config 3.0//EN" "http://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+    <settings>
+        <setting name="mapUnderscoreToCamelCase" value="true" />
+        <setting name="useGeneratedKeys" value="true" />
+        <setting name="defaultExecutorType" value="REUSE" />
+        <setting name="logImpl" value="SLF4J" />
+    </settings>
+    <environments default="h2test">
+        <environment id="h2test">
+            <transactionManager type="JDBC" />
+            <dataSource type="UNPOOLED">
+                <property name="driver" value="org.h2.Driver" />
+                <property name="url" value="jdbc:h2:file:/tmp/h2testdb;MODE=MySQL;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE;AUTO_SERVER=TRUE" />
+                <property name="username" value="sa" />
+                <property name="password" value="" />
+            </dataSource>
+        </environment>
+    </environments>
+    <mappers>
+        <mapper resource="jp/vemi/seasarbatis/sql/executor/SBQueryExecutor.xml" />
+        <mapper resource="jp/vemi/seasarbatis/test/TestUserMapper.xml" />
+        <mapper resource="jp/vemi/seasarbatis/test/RollbackTestMapper.xml" />
+    </mappers>
+</configuration>

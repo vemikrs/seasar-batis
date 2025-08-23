@@ -37,7 +37,12 @@ class SBJdbcManagerBatchTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        SBJdbcManagerFactory factory = new SBJdbcManagerFactory("mybatis-test-config.xml");
+        // ローカル開発ではH2を使用し、CI環境ではMySQLを使用
+        String configFile = System.getProperty("test.database", "h2").equals("mysql") 
+            ? "mybatis-test-config.xml" 
+            : "mybatis-h2-test-config.xml";
+        
+        SBJdbcManagerFactory factory = new SBJdbcManagerFactory(configFile);
         jdbcManager = factory.create();
     }
 

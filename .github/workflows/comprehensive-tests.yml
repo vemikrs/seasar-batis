@@ -99,6 +99,7 @@ jobs:
           ./gradlew test --continue --exclude-task integrationTest || echo "Unit tests completed with warnings"
         env:
           SPRING_PROFILES_ACTIVE: test
+          test.database: mysql
 
       - name: Run integration tests only
         if: ${{ github.event.inputs.test_scope == 'integration-only' || github.event.inputs.test_scope == 'all' || github.event.inputs.test_scope == '' }}
@@ -108,6 +109,7 @@ jobs:
           ./gradlew test --continue
         env:
           SPRING_PROFILES_ACTIVE: test
+          test.database: mysql
           MYSQL_URL: jdbc:mysql://localhost:3306/seasarbatis_test
           MYSQL_USERNAME: test
           MYSQL_PASSWORD: test
@@ -119,6 +121,7 @@ jobs:
           ./gradlew check jacocoTestReport --continue
         env:
           SPRING_PROFILES_ACTIVE: test
+          test.database: mysql
           MYSQL_URL: jdbc:mysql://localhost:3306/seasarbatis_test
           MYSQL_USERNAME: test
           MYSQL_PASSWORD: test
