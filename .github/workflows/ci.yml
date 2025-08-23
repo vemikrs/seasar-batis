@@ -10,6 +10,22 @@ jobs:
   build:
     runs-on: ubuntu-latest
     
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: rootpass
+          MYSQL_DATABASE: testdb
+          MYSQL_USER: testuser
+          MYSQL_PASSWORD: testpass
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+    
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -20,10 +36,28 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
         
+    - name: Install MySQL Client
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y mysql-client
+        
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v4
       with:
         gradle-version: '8.9'
+        
+    - name: Wait for MySQL
+      run: |
+        while ! mysqladmin ping -h"127.0.0.1" -P3306 -u"testuser" -p"testpass" --silent; do
+          echo "Waiting for MySQL..."
+          sleep 1
+        done
+        echo "MySQL is ready!"
+        
+    - name: Initialize database
+      run: |
+        mysql -h127.0.0.1 -P3306 -utestuser -ptestpass testdb < lib/src/test/resources/ddl/01_create.sql
+        mysql -h127.0.0.1 -P3306 -utestuser -ptestpass testdb < lib/src/test/resources/ddl/02_insert_initial_data.sql
         
     - name: Build with Gradle
       run: gradle build --continue
