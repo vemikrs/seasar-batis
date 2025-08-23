@@ -20,7 +20,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * 
  * @author H.Kurosawa
  * @version 1.0.0
- * @since 2025/01/01
+ * @since 2025/08/23
  */
 class SBTransactionManagerIntegrationTest {
 

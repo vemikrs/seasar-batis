@@ -17,7 +17,7 @@ import java.lang.annotation.Target;
  * 
  * @author H.Kurosawa
  * @version 1.0.0
- * @since 2025/01/01
+ * @since 2025/08/23
  */
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
