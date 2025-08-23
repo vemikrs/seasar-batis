@@ -79,7 +79,7 @@ class SbJdbcManagerTest {
             String sql = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
             // セミコロンで分割して、空行以外を実行
             String[] commands = sql.split(";");
-            try (SqlSession session = jdbcManager.getSqlSessionFactory().openSession();
+            try (SqlSession session = jdbcManager.getSqlSessionFactory().openSession(true);  // autoCommit=true
                     Connection conn = session.getConnection();
                     Statement stmt = conn.createStatement()) {
                 for (String cmd : commands) {
@@ -94,7 +94,6 @@ class SbJdbcManagerTest {
                         }
                     }
                 }
-                session.commit();
                 
                 // H2の場合、データが正しく挿入されたか確認
                 if (resourcePath.contains("insert")) {
@@ -105,6 +104,14 @@ class SbJdbcManagerTest {
                             System.out.println("[INFO] テーブル内データ件数: " + rs.getInt("cnt"));
                         }
                         rs.close();
+                        
+                        // 実際に挿入されたデータの詳細を確認
+                        java.sql.ResultSet dataRs = verifyStmt.executeQuery("SELECT id, name, sequence_no FROM sbtest_users ORDER BY id");
+                        System.out.println("[INFO] 挿入されたデータ詳細:");
+                        while (dataRs.next()) {
+                            System.out.println("  ID: " + dataRs.getLong("id") + ", Name: " + dataRs.getString("name") + ", Sequence: " + dataRs.getInt("sequence_no"));
+                        }
+                        dataRs.close();
                         verifyStmt.close();
                     } catch (Exception e) {
                         System.out.println("[WARN] データ件数確認でエラー: " + e.getMessage());

@@ -1,4 +1,5 @@
 INSERT INTO sbtest_users (
+    id,
     sequence_no,
     amount,
     rate,
@@ -19,6 +20,7 @@ INSERT INTO sbtest_users (
 -- テストユーザー1: findByPk, findAll, where, 複雑なクエリの対象
 (
     1,
+    1,
     2000.00,
     0.05,
     85.0,
@@ -38,6 +40,7 @@ INSERT INTO sbtest_users (
 -- テストユーザー2: findAll の対象
 (
     2,
+    2,
     1500.00,
     0.03,
     70.0,
@@ -56,6 +59,7 @@ INSERT INTO sbtest_users (
 ),
 -- 複雑なクエリ用: ステータス条件、score > 80またはuser_type=VIPかつpreferences存在
 (
+    3,
     3,
     3000.00,
     0.04,
