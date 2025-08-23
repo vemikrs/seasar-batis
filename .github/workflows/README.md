@@ -2,6 +2,10 @@
 
 このディレクトリには、SeasarBatisプロジェクトのためのGitHub Actionsワークフローが含まれています。
 
+## 重要な注意事項
+
+**Gradle Wrapper JAR について**: このプロジェクトでは `gradle-wrapper.jar` をGitリポジトリにコミットしていません。これは現代的なCI/CDベストプラクティスに従うためです。詳細は [GRADLE_WRAPPER.md](GRADLE_WRAPPER.md) をご確認ください。
+
 ## ワークフロー一覧
 
 ### 1. Comprehensive Test Suite (`comprehensive-tests.yml`)
