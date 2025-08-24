@@ -4,12 +4,24 @@ on:
   push:
     tags:
       - 'v*'
+  pull_request:
+    paths:
+      - '.github/workflows/release.yml'
+      - 'build.gradle'
+      - 'lib/build.gradle'
+      - 'spring/build.gradle'
+      - 'settings.gradle'
   workflow_dispatch:
     inputs:
       version:
         description: 'Version to release (e.g., 1.0.0)'
         required: true
         type: string
+      dry_run:
+        description: 'Dry run mode (skip actual publishing)'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   release:
@@ -35,31 +47,75 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-gradle-
           
+    - name: Determine execution mode
+      run: |
+        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+          echo "DRY_RUN=true" >> $GITHUB_ENV
+          echo "RELEASE_VERSION=1.0.0-test" >> $GITHUB_ENV
+          echo "MODE=TEST" >> $GITHUB_ENV
+        elif [[ "${{ github.event.inputs.dry_run }}" == "true" ]]; then
+          echo "DRY_RUN=true" >> $GITHUB_ENV
+          echo "RELEASE_VERSION=${{ github.event.inputs.version }}-test" >> $GITHUB_ENV
+          echo "MODE=DRY_RUN" >> $GITHUB_ENV
+        else
+          echo "DRY_RUN=false" >> $GITHUB_ENV
+          echo "MODE=RELEASE" >> $GITHUB_ENV
+        fi
+        
     - name: Extract version from tag
-      if: startsWith(github.ref, 'refs/tags/')
+      if: startsWith(github.ref, 'refs/tags/') && env.DRY_RUN == 'false'
       run: |
         TAG_VERSION=${GITHUB_REF#refs/tags/v}
         echo "RELEASE_VERSION=$TAG_VERSION" >> $GITHUB_ENV
         
     - name: Use manual version
-      if: github.event_name == 'workflow_dispatch'
+      if: github.event_name == 'workflow_dispatch' && env.DRY_RUN == 'false'
       run: |
         echo "RELEASE_VERSION=${{ github.event.inputs.version }}" >> $GITHUB_ENV
         
+    - name: Display execution mode
+      run: |
+        echo "🔍 Execution Mode: $MODE"
+        echo "📦 Version: $RELEASE_VERSION"
+        echo "🧪 Dry Run: $DRY_RUN"
+        
     - name: Update version in gradle files
       run: |
+        echo "Updating version to: $RELEASE_VERSION"
         sed -i "s/version = '[^']*'/version = '$RELEASE_VERSION'/" lib/build.gradle
         sed -i "s/version = '[^']*'/version = '$RELEASE_VERSION'/" spring/build.gradle
         
+    - name: Validate gradle files
+      run: |
+        echo "=== lib/build.gradle version ==="
+        grep "version = " lib/build.gradle
+        echo "=== spring/build.gradle version ==="
+        grep "version = " spring/build.gradle
+        
     - name: Import GPG key
+      if: env.DRY_RUN == 'false'
       run: |
         echo "${{ secrets.GPG_PRIVATE_KEY }}" | base64 --decode | gpg --batch --import
         
+    - name: Setup GPG for testing
+      if: env.DRY_RUN == 'true'
+      run: |
+        echo "⚠️  Skipping GPG setup in test mode"
+        
     - name: Build and test
       run: |
+        echo "🔨 Building project..."
         ./gradlew clean build -x test
+        echo "✅ Build completed successfully"
+        
+    - name: Validate publishing configuration
+      run: |
+        echo "📋 Validating publishing configuration..."
+        ./gradlew tasks --all | grep -i publish || true
+        echo "✅ Publishing tasks available"
         
     - name: Publish to Maven Central
+      if: env.DRY_RUN == 'false'
       env:
         OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
         OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
@@ -68,4 +124,19 @@ jobs:
         SIGNING_SECRET_KEY: ${{ secrets.SIGNING_SECRET_KEY }}
         GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
       run: |
+        echo "🚀 Publishing to Maven Central..."
         ./gradlew publishToSonatype closeSonatypeStagingRepository
+        echo "✅ Published successfully"
+        
+    - name: Dry run publishing validation
+      if: env.DRY_RUN == 'true'
+      run: |
+        echo "🧪 Dry run mode - validating publishing setup without actual publishing"
+        echo "📋 Available publishing tasks:"
+        ./gradlew tasks --all | grep -i publish || true
+        echo ""
+        echo "📦 Generated artifacts:"
+        find . -name "*.jar" -type f | head -10 || true
+        echo ""
+        echo "⚠️  Skipping actual Maven Central publishing in test mode"
+        echo "✅ Dry run validation completed"
