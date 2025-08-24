@@ -60,7 +60,10 @@ jobs:
         mysql -h127.0.0.1 -P3306 -utestuser -ptestpass testdb < lib/src/test/resources/ddl/02_insert_initial_data.sql
         
     - name: Build with Gradle
-      run: gradle build --continue
+      run: |
+        echo "Using Gradle version:"
+        gradle --version
+        gradle build --continue
       
     - name: Upload test results
       uses: actions/upload-artifact@v4
