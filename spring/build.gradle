@@ -1,6 +1,11 @@
 plugins {
     id 'java-library'
+    id 'maven-publish'
+    id 'signing'
 }
+
+group = 'jp.vemi'
+version = '1.0.0'
 
 sourceSets {
     main {
@@ -39,4 +44,81 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-test:3.2.2'
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.11.0'
     testImplementation 'com.h2database:h2:2.2.224'
+}
+
+// Generate sources and javadoc jars
+task sourcesJar(type: Jar) {
+    from sourceSets.main.allJava
+    archiveClassifier = 'sources'
+}
+
+task javadocJar(type: Jar) {
+    from javadoc
+    archiveClassifier = 'javadoc'
+}
+
+javadoc {
+    options.addStringOption('Xdoclint:none', '-quiet')
+    options.addStringOption('Xmaxwarns', '1')
+    failOnError = false
+}
+
+// Maven publishing configuration
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from components.java
+            
+            groupId = 'jp.vemi'
+            artifactId = 'seasar-batis-spring'
+            version = project.version
+            
+            // Generate sources jar
+            artifact sourcesJar
+            // Generate javadoc jar
+            artifact javadocJar
+            
+            pom {
+                name = 'SeasarBatis Spring Integration'
+                description = 'Spring Framework integration module for SeasarBatis'
+                url = 'https://github.com/vemic/seasar-batis'
+                
+                licenses {
+                    license {
+                        name = 'The Apache License, Version 2.0'
+                        url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                    }
+                }
+                
+                developers {
+                    developer {
+                        id = 'vemic'
+                        name = 'vemic'
+                        email = 'vemic@vemi.jp'
+                    }
+                }
+                
+                scm {
+                    connection = 'scm:git:git://github.com/vemic/seasar-batis.git'
+                    developerConnection = 'scm:git:ssh://github.com:vemic/seasar-batis.git'
+                    url = 'https://github.com/vemic/seasar-batis'
+                }
+            }
+        }
+    }
+}
+
+// Signing configuration
+signing {
+    required { gradle.taskGraph.hasTask("publishToSonatype") }
+    
+    def signingKeyId = System.getenv("SIGNING_KEY_ID")
+    def signingPassword = System.getenv("SIGNING_PASSWORD")
+    def signingSecretKey = System.getenv("SIGNING_SECRET_KEY")
+    
+    if (signingKeyId && signingPassword && signingSecretKey) {
+        useInMemoryPgpKeys(signingKeyId, signingSecretKey, signingPassword)
+    }
+    
+    sign publishing.publications.maven
 }
