@@ -2,6 +2,24 @@
 
 This document explains how to test the Maven Central release workflow without performing actual releases.
 
+## Gradle Wrapper Management
+
+**Important**: The `gradle-wrapper.jar` file is NOT stored in git. It's generated dynamically:
+
+- **CI/CD**: Automatically generated during workflow execution
+- **Local development**: Downloaded on first `./gradlew` execution
+- **Version**: Controlled by `gradle/wrapper/gradle-wrapper.properties` (currently Gradle 8.9)
+
+### Testing Wrapper Generation
+
+```bash
+# Test dynamic wrapper generation (simulates CI behavior)
+rm -f gradle/wrapper/gradle-wrapper.jar  # Remove if exists
+gradle wrapper --gradle-version 8.9      # Generate wrapper
+./gradlew --version                       # Test functionality
+./gradlew clean build -x test            # Test build process
+```
+
 ## Testing Methods
 
 ### 1. Pull Request Testing (Automatic)
