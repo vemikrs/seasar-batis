@@ -37,6 +37,19 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
         
+    - name: Setup Gradle Wrapper
+      run: |
+        if [ ! -f gradle/wrapper/gradle-wrapper.jar ]; then
+          echo "📥 Generating gradle-wrapper.jar..."
+          # Use installed gradle to regenerate wrapper with correct version
+          GRADLE_VERSION=$(grep "distributionUrl" gradle/wrapper/gradle-wrapper.properties | sed 's/.*gradle-\(.*\)-bin.zip/\1/')
+          echo "Target Gradle version: $GRADLE_VERSION"
+          gradle wrapper --gradle-version $GRADLE_VERSION
+          echo "✅ Gradle wrapper generated successfully"
+        else
+          echo "✅ Gradle wrapper already exists"
+        fi
+        
     - name: Cache Gradle packages
       uses: actions/cache@v4
       with:
