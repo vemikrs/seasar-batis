@@ -61,7 +61,10 @@ task javadocJar(type: Jar) {
 
 tasks.named('test') {
     useJUnitPlatform()
-    failOnNoDiscoveredTests = false
+    // Configure to not fail when no tests are discovered
+    filter {
+        setFailOnNoMatchingTests(false)
+    }
 }
 
 javadoc {
