@@ -14,7 +14,7 @@ import jp.vemi.seasarbatis.core.i18n.SBMessageManager;
  * 
  * @author H.Kurosawa
  * @version 1.0.0-beta1
- * @since 2025/08/23
+ * @since 2025/01/01
  */
 public class SBNonUniqueResultException extends SBException {
     

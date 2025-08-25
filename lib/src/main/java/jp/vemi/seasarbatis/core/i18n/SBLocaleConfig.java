@@ -14,7 +14,7 @@ import java.util.Locale;
  * 
  * @author H.Kurosawa
  * @version 1.0.0-beta1
- * @since 2025/08/23
+ * @since 2025/01/01
  */
 public class SBLocaleConfig {
     

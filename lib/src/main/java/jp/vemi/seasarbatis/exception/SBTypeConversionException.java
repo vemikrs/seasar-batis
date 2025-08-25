@@ -12,7 +12,7 @@ package jp.vemi.seasarbatis.exception;
  *
  * @author H.Kurosawa
  * @version 1.0.0
- * @since 2025/08/23
+ * @since 2025/01/01
  */
 public class SBTypeConversionException extends SBException {
     
