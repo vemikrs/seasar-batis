@@ -13,7 +13,7 @@ This project follows the standard practice of **NOT** committing `gradle-wrapper
 
 1. **Local development**: The `gradlew` script automatically downloads the wrapper JAR on first use
 2. **CI/CD environment**: The `gradle/gradle-build-action` GitHub Action handles wrapper setup automatically
-3. **Validation**: `gradle/wrapper-validation-action` ensures wrapper integrity and security
+3. **Validation**: `gradle/actions/wrapper-validation` ensures wrapper integrity and security
 
 ## Manual setup (if needed)
 
