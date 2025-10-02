@@ -42,7 +42,7 @@ class SbJdbcManagerTest {
         SBJdbcManagerFactory factory = new SBJdbcManagerFactory("mybatis-test-config.xml");
         jdbcManager = factory.create();
 
-        // initializeDatabase();
+        initializeDatabase();
     }
 
     @SuppressWarnings("unused")

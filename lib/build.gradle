@@ -19,6 +19,7 @@ dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.11.0'
     testImplementation 'org.mockito:mockito-junit-jupiter:5.3.1'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.11.0'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.11.0'
 
     // Mockito for mocking in tests.
     testImplementation 'org.mockito:mockito-core:5.2.0'
@@ -61,6 +62,7 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
+    maxParallelForks = 1
     reports {
         html.required = true
         junitXml.required = false

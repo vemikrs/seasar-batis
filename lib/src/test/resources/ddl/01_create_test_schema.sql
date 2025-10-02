@@ -14,9 +14,9 @@ CREATE TABLE sbtest_users (
     updated_at DATETIME,
     birth_date DATE,
     work_time TIME,
-    status ENUM('ACTIVE', 'INACTIVE', 'DELETED'),
-    user_type SET('ADMIN', 'USER', 'GUEST','VIP'),
-    preferences JSON,
+    status VARCHAR(20),
+    user_type VARCHAR(50),
+    preferences VARCHAR(1000),
     PRIMARY KEY (id),
     INDEX idx_name (name),
     INDEX idx_status (status)
