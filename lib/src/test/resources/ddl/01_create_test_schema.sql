@@ -5,7 +5,7 @@ CREATE TABLE sbtest_users (
     amount DECIMAL(10,2),
     rate FLOAT,
     score DOUBLE,
-    is_active TINYINT(1),
+    is_active BOOLEAN,
     name VARCHAR(100),
     description TEXT,
     memo MEDIUMTEXT,

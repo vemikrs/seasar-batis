@@ -15,6 +15,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.apache.ibatis.session.SqlSession;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -37,15 +38,19 @@ class SbJdbcManagerTest {
 
     private SBJdbcManager jdbcManager;
 
-    @BeforeEach
-    void setUp() throws Exception {
+    @BeforeAll
+    void setUpOnce() throws Exception {
         SBJdbcManagerFactory factory = new SBJdbcManagerFactory("mybatis-test-config.xml");
         jdbcManager = factory.create();
 
         initializeDatabase();
     }
 
-    @SuppressWarnings("unused")
+    @BeforeEach
+    void setUp() throws Exception {
+        // 各テスト前には何もしない（データベースは@BeforeAllで初期化済み）
+    }
+
     private void initializeDatabase() throws Exception {
 
         // スキーマ作成と初期データの投入
@@ -61,22 +66,23 @@ class SbJdbcManagerTest {
             String sql = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
             // セミコロンで分割して、空行以外を実行
             String[] commands = sql.split(";");
-            try (SqlSession session = jdbcManager.getSqlSessionFactory().openSession();
+            try (SqlSession session = jdbcManager.getSqlSessionFactory().openSession(true);
                     Connection conn = session.getConnection();
                     Statement stmt = conn.createStatement()) {
+                // タイムアウトを設定
+                stmt.setQueryTimeout(5);
                 for (String cmd : commands) {
                     if (!cmd.trim().isEmpty()) {
                         try {
                             int affected = stmt.executeUpdate(cmd);
-                            System.out.println("[INFO] SQL実行成功: " + cmd.trim() + " (影響行数: " + affected + ")");
+                            System.out.println("[INFO] SQL実行成功: " + cmd.trim().substring(0, Math.min(50, cmd.trim().length())) + "... (影響行数: " + affected + ")");
                         } catch (Exception e) {
-                            System.err.println("[ERROR] SQL実行失敗: " + cmd.trim());
+                            System.err.println("[ERROR] SQL実行失敗: " + cmd.trim().substring(0, Math.min(50, cmd.trim().length())));
                             e.printStackTrace();
                             throw e;
                         }
                     }
                 }
-                session.commit();
             }
         }
     }

@@ -62,19 +62,21 @@ class SBJdbcManagerBatchTest {
             String sql = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
             // セミコロンで分割して、空行以外を実行
             String[] commands = sql.split(";");
-            try (SqlSession session = jdbcManager.getSqlSessionFactory().openSession();
+            try (SqlSession session = jdbcManager.getSqlSessionFactory().openSession(true);
                     Connection conn = session.getConnection();
                     Statement stmt = conn.createStatement()) {
+                // タイムアウトを設定
+                stmt.setQueryTimeout(5);
                 for (String cmd : commands) {
                     if (!cmd.trim().isEmpty()) {
                         try {
                             stmt.executeUpdate(cmd);
                         } catch (Exception e) {
                             // DDLエラーを許容（既に存在する場合など）
+                            System.out.println("[WARN] SQL実行エラー（許容）: " + e.getMessage());
                         }
                     }
                 }
-                conn.commit();
             }
         }
     }
