@@ -1,0 +1,82 @@
+name: Tests - Env Smoke Matrix
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
+jobs:
+  smoke:
+    name: Env Smoke (Java ${{ matrix.java }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      TZ: Asia/Tokyo
+    strategy:
+      fail-fast: true
+      matrix:
+        java: [ "11", "17", "21", "23" ]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Temurin JDK ${{ matrix.java }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+
+      - name: Setup Gradle (cache enabled)
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Verify Gradle
+        run: ./gradlew --version
+
+      - name: Run smoke tests only
+        run: |
+          # 現段階は Smoke を含むクラス名のみ実行
+          ./gradlew test --no-daemon --tests "*Smoke*"
+
+      - name: Generate JaCoCo (optional)
+        run: ./gradlew jacocoTestReport --no-daemon
+
+      - name: Publish JUnit summary to PR
+        if: always()
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          files: "**/build/test-results/test/*.xml"
+          check_name: "JUnit Results (Smoke, Java ${{ matrix.java }})"
+          comment_mode: "update"
+          compare_to_earlier_commit: true
+
+      - name: Upload test reports (XML/HTML)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: env-smoke-test-reports-java-${{ matrix.java }}
+          path: |
+            **/build/test-results/test/*.xml
+            **/build/reports/tests/test/**
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload JaCoCo reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: env-smoke-jacoco-java-${{ matrix.java }}
+          path: |
+            **/build/reports/jacoco/test/jacocoTestReport.xml
+            **/build/reports/jacoco/test/html/**
+          if-no-files-found: warn
+          retention-days: 14
