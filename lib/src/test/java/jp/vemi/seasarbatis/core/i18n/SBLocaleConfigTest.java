@@ -35,6 +35,7 @@ public class SBLocaleConfigTest {
     }
     
     @Test
+    @org.junit.jupiter.api.Tag("smoke")
     void testSetDefault() {
         Locale systemDefault = Locale.getDefault();
         localeConfig.setDefault();

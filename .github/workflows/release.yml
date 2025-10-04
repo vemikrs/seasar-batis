@@ -4,13 +4,6 @@ on:
   push:
     tags:
       - 'v*'
-  pull_request:
-    paths:
-      - '.github/workflows/release.yml'
-      - 'build.gradle'
-      - 'lib/build.gradle'
-      - 'spring/build.gradle'
-      - 'settings.gradle'
   workflow_dispatch:
     inputs:
       version:

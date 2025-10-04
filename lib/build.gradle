@@ -59,11 +59,23 @@ dependencies {
 }
 
 tasks.named('test') {
-    useJUnitPlatform()
+    // JUnit Platform を使用
+    useJUnitPlatform {
+        // junitTags システム/プロジェクトプロパティが指定された場合のみ includeTags を適用
+        def prop = System.getProperty('junitTags') ?: (project.hasProperty('junitTags') ? project.property('junitTags') : null)
+        if (prop) {
+            def tags = prop.toString().split(',').collect { it.trim() }.findAll { it }
+            if (!tags.isEmpty()) {
+                includeTags(tags as String[])
+            }
+        }
+    }
+
+    // 実行オプション
     maxParallelForks = 1
     reports {
         html.required = true
-        junitXml.required = false
+        junitXml.required = true
     }
 }
 
@@ -75,7 +87,6 @@ java {
 javadoc {
     options.addStringOption('Xdoclint:none', '-quiet')
     options.addStringOption('Xmaxwarns', '1')
-    options.addBooleanOption('allow-script-in-comments', true)
     failOnError = false
 }
 

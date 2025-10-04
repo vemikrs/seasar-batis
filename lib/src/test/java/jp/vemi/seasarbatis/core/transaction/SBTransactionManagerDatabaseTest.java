@@ -100,6 +100,7 @@ class SBTransactionManagerDatabaseTest {
 
     @Test
     @Order(1)
+    @org.junit.jupiter.api.Tag("smoke")
     void testBasicTransactionCommit() {
         // 基本的なトランザクションコミットテスト
         final AtomicBoolean executed = new AtomicBoolean(false);

@@ -12,6 +12,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import jp.vemi.seasarbatis.core.sql.ParsedSql;
@@ -21,6 +22,7 @@ import jp.vemi.seasarbatis.core.sql.processor.SBSqlParser;
 class SBSqlParserTest {
 
     @Test
+    @Tag("smoke")
     void testFileLoading() throws IOException {
         String sql = SBSqlFileLoader.load("test-query.sql");
         assertNotNull(sql);

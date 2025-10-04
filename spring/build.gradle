@@ -53,7 +53,16 @@ java {
 }
 
 tasks.named('test') {
-    useJUnitPlatform()
+    // Use JUnit Platform and bridge junitTags (-P / -D) to includeTags like :lib
+    useJUnitPlatform {
+        def prop = System.getProperty('junitTags') ?: (project.hasProperty('junitTags') ? project.property('junitTags') : null)
+        if (prop) {
+            def tags = prop.toString().split(',').collect { it.trim() }.findAll { it }
+            if (!tags.isEmpty()) {
+                includeTags(tags as String[])
+            }
+        }
+    }
     // Configure to not fail when no tests are discovered
     filter {
         setFailOnNoMatchingTests(false)

@@ -92,6 +92,7 @@ class SbJdbcManagerTest {
 
     @Test
     @Order(1)
+    @org.junit.jupiter.api.Tag("smoke")
     void testFindByPk() {
         // テストデータ期待値
         TestSbUser expected = TestSbUser.builder()
