@@ -52,10 +52,18 @@ class SbJdbcManagerTest {
     }
 
     private void initializeDatabase() throws Exception {
+        // H2使用時とMySQL使用時で異なるDDLを使用
+        String databaseType = System.getProperty("test.database", "h2");
+        String schemaFile = databaseType.equals("mysql") 
+            ? "/ddl/01_create_test_schema.sql" 
+            : "/ddl/01_create_h2_schema.sql";
+        String dataFile = databaseType.equals("mysql") 
+            ? "/ddl/02_insert_initial_data.sql" 
+            : "/ddl/02_insert_h2_data.sql";
 
         // スキーマ作成と初期データの投入
-        executeSqlScript("/ddl/01_create_test_schema.sql");
-        executeSqlScript("/ddl/02_insert_initial_data.sql");
+        executeSqlScript(schemaFile);
+        executeSqlScript(dataFile);
     }
 
     private void executeSqlScript(String resourcePath) throws Exception {
@@ -84,6 +92,29 @@ class SbJdbcManagerTest {
                             e.printStackTrace();
                             throw e;
                         }
+                    }
+                }
+                
+                // insertの場合、データが正しく挿入されたか確認
+                if (resourcePath.contains("insert")) {
+                    try {
+                        Statement verifyStmt = conn.createStatement();
+                        java.sql.ResultSet rs = verifyStmt.executeQuery("SELECT COUNT(*) as cnt FROM sbtest_users");
+                        if (rs.next()) {
+                            System.out.println("[INFO] テーブル内データ件数: " + rs.getInt("cnt"));
+                        }
+                        rs.close();
+                        
+                        // 実際に挿入されたデータの詳細を確認
+                        java.sql.ResultSet dataRs = verifyStmt.executeQuery("SELECT id, name, sequence_no FROM sbtest_users ORDER BY id");
+                        System.out.println("[INFO] 挿入されたデータ詳細:");
+                        while (dataRs.next()) {
+                            System.out.println("  ID: " + dataRs.getLong("id") + ", Name: " + dataRs.getString("name") + ", Sequence: " + dataRs.getInt("sequence_no"));
+                        }
+                        dataRs.close();
+                        verifyStmt.close();
+                    } catch (Exception e) {
+                        System.out.println("[WARN] データ件数確認でエラー: " + e.getMessage());
                     }
                 }
             }

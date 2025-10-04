@@ -121,8 +121,10 @@ public class SeasarBatisConfig {
 @Autowired
 private SBJdbcManager jdbcManager;
 
-// エンティティの取得
-User user = jdbcManager.findByPk(User.class, 1);
+// エンティティの取得（主キー指定）
+User pk = new User();
+pk.setId(1L);
+User user = jdbcManager.findByPk(pk).getSingleResult();
 
 // 一覧取得
 List<User> users = jdbcManager.findAll(User.class);
@@ -132,12 +134,14 @@ User newUser = new User();
 newUser.setName("John");
 jdbcManager.insert(newUser);
 
-// エンティティの更新
+// エンティティの更新（主キーを持つエンティティを渡す）
 user.setName("Jane");
-jdbcManager.updateByPk(user);
+jdbcManager.update(user);
 
-// エンティティの削除
-jdbcManager.deleteByPk(User.class, 1);
+// エンティティの削除（主キーを持つエンティティを渡す）
+User toDelete = new User();
+toDelete.setId(1L);
+jdbcManager.delete(toDelete);
 ```
 
 ### Seasar2ライクなクエリビルダー
@@ -343,4 +347,89 @@ throw new SBTransactionException("transaction.error.execution");
 - 一般的なエラーメッセージ
 
 詳細なメッセージ一覧は`src/main/resources/jp/vemi/seasarbatis/messages.properties`と`messages_ja.properties`を参照してください。
+
+
+## 楽観的排他制御（Optimistic Locking）
+
+SeasarBatis は、バージョンカラムまたは最終更新日時カラムに基づく楽観的排他制御をサポートします。更新時に自動で条件を付与し、競合が検出された場合は `SBOptimisticLockException` をスローします。詳細は `OPTIMISTIC_LOCKING.md` を参照してください。
+
+### 使い方（エンティティ注釈）
+
+```java
+@SBTableMeta(name = "users")
+public class User {
+    @SBColumnMeta(name = "id", primaryKey = true)
+    private Long id;
+
+    @SBColumnMeta(name = "name")
+    private String name;
+
+    // バージョン方式
+    @SBColumnMeta(name = "version", versionColumn = true)
+    private Long version;
+
+    // または、最終更新日時方式
+    // @SBColumnMeta(name = "updated_at", lastModifiedColumn = true)
+    // private LocalDateTime updatedAt;
+}
+```
+
+### 設定ファイル
+
+`src/main/resources/seasarbatis-optimistic-lock.properties`（デフォルト名）で制御方式を上書きできます。
+
+```properties
+seasarbatis.optimistic-lock.enabled=true
+seasarbatis.optimistic-lock.default-type=NONE
+
+# エンティティごとの上書き
+seasarbatis.optimistic-lock.entity.com.example.User.type=VERSION
+seasarbatis.optimistic-lock.entity.com.example.User.column=version
+
+seasarbatis.optimistic-lock.entity.com.example.Order.type=LAST_MODIFIED
+seasarbatis.optimistic-lock.entity.com.example.Order.column=updated_at
+```
+
+### プログラムによる設定
+
+```java
+import jp.vemi.seasarbatis.core.config.SBOptimisticLockConfig;
+import jp.vemi.seasarbatis.core.config.SBOptimisticLockConfig.EntityLockConfig;
+import jp.vemi.seasarbatis.core.config.SBOptimisticLockConfig.LockType;
+
+SBOptimisticLockConfig config = new SBOptimisticLockConfig()
+    .setEnabled(true)
+    .setDefaultLockType(LockType.VERSION)
+    .addEntityConfig(User.class, new EntityLockConfig(LockType.VERSION, null))
+    .addEntityConfig(Order.class, new EntityLockConfig(LockType.LAST_MODIFIED, "updated_at"));
+
+SBJdbcManager jdbcManager = new SBJdbcManager(sqlSessionFactory, config);
+```
+
+### 基本的な流れ
+
+```java
+User user = jdbcManager.findByPk(pk).getSingleResult();
+Long originalVersion = user.getVersion();
+
+user.setName("Updated");
+User updated = jdbcManager.update(user);
+
+// VERSION なら自動で +1 される
+assert updated.getVersion().equals(originalVersion + 1);
+```
+
+### 競合時の例外処理
+
+```java
+try {
+    User u = jdbcManager.findByPk(pk).getSingleResult();
+    u.setName("Updated");
+    jdbcManager.update(u);
+} catch (SBOptimisticLockException e) {
+    // 競合。最新データを取得して再実行など
+}
+```
+
+より詳しい設計や制約、エッジケースは `OPTIMISTIC_LOCKING.md` を参照してください。
 
