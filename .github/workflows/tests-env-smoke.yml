@@ -69,7 +69,9 @@ jobs:
           OUTPUT=$(./gradlew :lib:test jacocoTestReport -PjunitTags=smoke 2>&1)
           STATUS=$?
           echo "$OUTPUT"
-          if echo "$OUTPUT" | grep -qi "no tests"; then
+          # 判定をログの文言ではなく成果物(XML)の有無で行う
+          RESULT_COUNT=$(find lib/build/test-results/test -type f -name '*.xml' -size +0 | wc -l || true)
+          if [ "$RESULT_COUNT" -eq 0 ]; then
             echo "No @Tag(smoke) tests detected. Falling back to a fast subset (SBSqlParserTest, SBExceptionI18nTest)."
             ./gradlew :lib:test jacocoTestReport \
               --tests "jp.vemi.seasarbatis.sql.builder.SBSqlParserTest" \
