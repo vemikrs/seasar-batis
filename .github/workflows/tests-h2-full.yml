@@ -37,6 +37,18 @@ jobs:
       - name: Setup Gradle (cache enabled)
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Generate Gradle Wrapper
+        run: |
+          if [ ! -f gradle/wrapper/gradle-wrapper.jar ]; then
+            echo "📥 Generating Gradle wrapper via Gradle..."
+            GRADLE_VERSION=$(grep "distributionUrl" gradle/wrapper/gradle-wrapper.properties | sed 's/.*gradle-\(.*\)-bin.zip/\1/')
+            echo "Target Gradle version: $GRADLE_VERSION"
+            gradle wrapper --gradle-version "$GRADLE_VERSION" --no-daemon --stacktrace
+            test -s gradle/wrapper/gradle-wrapper.jar && echo "✅ Gradle wrapper jar generated" || (echo "❌ Failed to generate gradle-wrapper.jar" && exit 1)
+          else
+            echo "✅ Gradle wrapper already exists"
+          fi
+
       - name: Verify Gradle
         run: ./gradlew --version
 
