@@ -53,7 +53,7 @@ jobs:
             echo "📥 (bootstrap) Generating Gradle wrapper via system Gradle only — project build uses ./gradlew (8.9)"
             GRADLE_VERSION=$(grep "distributionUrl" gradle/wrapper/gradle-wrapper.properties | sed 's/.*gradle-\(.*\)-bin.zip/\1/')
             echo "Target Gradle version: $GRADLE_VERSION"
-            gradle -q wrapper --gradle-version "$GRADLE_VERSION" --no-daemon || gradle wrapper --gradle-version "$GRADLE_VERSION" --no-daemon --stacktrace
+            gradle -q wrapper --gradle-version "$GRADLE_VERSION" || gradle wrapper --gradle-version "$GRADLE_VERSION" --stacktrace
             test -s gradle/wrapper/gradle-wrapper.jar && echo "✅ Gradle wrapper jar generated" || (echo "❌ Failed to generate gradle-wrapper.jar" && exit 1)
           else
             echo "✅ Gradle wrapper already exists"
@@ -65,12 +65,12 @@ jobs:
       - name: Run smoke tests only (by tag)
         run: |
           set +e
-          OUTPUT=$(./gradlew test --no-daemon -DjunitTags=smoke 2>&1)
+          OUTPUT=$(./gradlew :lib:test -PjunitTags=smoke 2>&1)
           STATUS=$?
           echo "$OUTPUT"
           if echo "$OUTPUT" | grep -qi "no tests"; then
             echo "No @Tag(smoke) tests detected. Falling back to a fast subset (SBSqlParserTest, SBExceptionI18nTest)."
-            ./gradlew :lib:test --no-daemon \
+            ./gradlew :lib:test \
               --tests "jp.vemi.seasarbatis.sql.builder.SBSqlParserTest" \
               --tests "jp.vemi.seasarbatis.exception.SBExceptionI18nTest"
             STATUS=$?
@@ -78,7 +78,7 @@ jobs:
           exit $STATUS
 
       - name: Generate JaCoCo (optional)
-        run: ./gradlew jacocoTestReport --no-daemon
+        run: ./gradlew jacocoTestReport
 
       - name: Publish JUnit summary to PR
         if: always()

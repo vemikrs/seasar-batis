@@ -51,7 +51,7 @@ jobs:
             echo "📥 (bootstrap) Generating Gradle wrapper via system Gradle only — project build uses ./gradlew (8.9)"
             GRADLE_VERSION=$(grep "distributionUrl" gradle/wrapper/gradle-wrapper.properties | sed 's/.*gradle-\(.*\)-bin.zip/\1/')
             echo "Target Gradle version: $GRADLE_VERSION"
-            gradle -q wrapper --gradle-version "$GRADLE_VERSION" --no-daemon || gradle wrapper --gradle-version "$GRADLE_VERSION" --no-daemon --stacktrace
+            gradle -q wrapper --gradle-version "$GRADLE_VERSION" || gradle wrapper --gradle-version "$GRADLE_VERSION" --stacktrace
             test -s gradle/wrapper/gradle-wrapper.jar && echo "✅ Gradle wrapper jar generated" || (echo "❌ Failed to generate gradle-wrapper.jar" && exit 1)
           else
             echo "✅ Gradle wrapper already exists"
@@ -61,7 +61,7 @@ jobs:
         run: ./gradlew --version
 
       - name: Run full test suite (H2)
-        run: ./gradlew clean check jacocoTestReport --no-daemon
+        run: ./gradlew clean check jacocoTestReport
 
       - name: Publish JUnit summary to PR
         if: always()
