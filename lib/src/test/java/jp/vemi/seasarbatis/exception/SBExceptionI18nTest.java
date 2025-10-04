@@ -8,6 +8,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.Locale;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import jp.vemi.seasarbatis.core.i18n.SBMessageManager;
@@ -15,6 +16,7 @@ import jp.vemi.seasarbatis.core.i18n.SBMessageManager;
 /**
  * その他の例外クラスの国際化対応テストクラスです。
  */
+@Tag("smoke")
 public class SBExceptionI18nTest {
     
     @BeforeEach

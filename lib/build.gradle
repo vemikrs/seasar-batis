@@ -59,7 +59,16 @@ dependencies {
 }
 
 tasks.named('test') {
-    useJUnitPlatform()
+    // JUnit Platform を使用
+    useJUnitPlatform {
+        // junitTags システム/プロジェクトプロパティが指定された場合のみ includeTags を適用
+        def prop = System.getProperty('junitTags') ?: (project.hasProperty('junitTags') ? project.property('junitTags') : null)
+        if (prop) {
+            includeTags prop.toString().split(',').collect { it.trim() }.findAll { it }
+        }
+    }
+
+    // 実行オプション
     maxParallelForks = 1
     reports {
         html.required = true
