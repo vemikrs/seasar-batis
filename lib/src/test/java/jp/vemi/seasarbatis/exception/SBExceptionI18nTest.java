@@ -16,7 +16,6 @@ import jp.vemi.seasarbatis.core.i18n.SBMessageManager;
 /**
  * その他の例外クラスの国際化対応テストクラスです。
  */
-@Tag("smoke")
 public class SBExceptionI18nTest {
     
     @BeforeEach
@@ -25,6 +24,7 @@ public class SBExceptionI18nTest {
     }
     
     @Test
+    @Tag("smoke")
     void testSBNoResultExceptionDefaultMessage() {
         SBMessageManager.getInstance().setLocale(Locale.ENGLISH);
         SBNoResultException exception = new SBNoResultException();

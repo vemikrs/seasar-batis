@@ -23,6 +23,7 @@ public class SBMessageManagerTest {
     }
     
     @Test
+    @org.junit.jupiter.api.Tag("smoke")
     void testGetMessageInEnglish() {
         // 英語ロケールに設定
         messageManager.setLocale(Locale.ENGLISH);
