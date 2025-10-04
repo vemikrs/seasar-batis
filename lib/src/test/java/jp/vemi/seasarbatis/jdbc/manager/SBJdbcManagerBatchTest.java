@@ -9,11 +9,16 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.sql.Connection;
+import java.sql.Statement;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import org.apache.ibatis.session.SqlSession;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -39,6 +44,41 @@ class SBJdbcManagerBatchTest {
     void setUp() throws Exception {
         SBJdbcManagerFactory factory = new SBJdbcManagerFactory("mybatis-test-config.xml");
         jdbcManager = factory.create();
+        
+        initializeDatabase();
+    }
+
+    private void initializeDatabase() throws Exception {
+        // スキーマ作成と初期データの投入
+        executeSqlScript("/ddl/01_create_test_schema.sql");
+        executeSqlScript("/ddl/02_insert_initial_data.sql");
+    }
+
+    private void executeSqlScript(String resourcePath) throws Exception {
+        try (InputStream inputStream = getClass().getResourceAsStream(resourcePath)) {
+            if (inputStream == null) {
+                throw new RuntimeException("SQLファイルが見つかりません: " + resourcePath);
+            }
+            String sql = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
+            // セミコロンで分割して、空行以外を実行
+            String[] commands = sql.split(";");
+            try (SqlSession session = jdbcManager.getSqlSessionFactory().openSession(true);
+                    Connection conn = session.getConnection();
+                    Statement stmt = conn.createStatement()) {
+                // タイムアウトを設定
+                stmt.setQueryTimeout(5);
+                for (String cmd : commands) {
+                    if (!cmd.trim().isEmpty()) {
+                        try {
+                            stmt.executeUpdate(cmd);
+                        } catch (Exception e) {
+                            // DDLエラーを許容（既に存在する場合など）
+                            System.out.println("[WARN] SQL実行エラー（許容）: " + e.getMessage());
+                        }
+                    }
+                }
+            }
+        }
     }
 
     @Test
