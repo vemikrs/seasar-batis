@@ -64,7 +64,10 @@ tasks.named('test') {
         // junitTags システム/プロジェクトプロパティが指定された場合のみ includeTags を適用
         def prop = System.getProperty('junitTags') ?: (project.hasProperty('junitTags') ? project.property('junitTags') : null)
         if (prop) {
-            includeTags prop.toString().split(',').collect { it.trim() }.findAll { it }
+            def tags = prop.toString().split(',').collect { it.trim() }.findAll { it }
+            if (!tags.isEmpty()) {
+                includeTags(tags as String[])
+            }
         }
     }
 
@@ -72,7 +75,7 @@ tasks.named('test') {
     maxParallelForks = 1
     reports {
         html.required = true
-        junitXml.required = false
+        junitXml.required = true
     }
 }
 
