@@ -105,10 +105,15 @@ public class SBMessageManager {
      */
     private void loadBundle() {
         try {
-            bundle = ResourceBundle.getBundle(BUNDLE_NAME, currentLocale);
+            // デフォルトロケール(システムロケール)へのフォールバックを抑制し、
+            // 指定ロケールが見つからない場合はベース(英語)にフォールバックさせる
+            ResourceBundle.Control noDefaultFallback = ResourceBundle.Control
+                    .getNoFallbackControl(ResourceBundle.Control.FORMAT_PROPERTIES);
+            bundle = ResourceBundle.getBundle(BUNDLE_NAME, currentLocale, noDefaultFallback);
         } catch (MissingResourceException e) {
             // フォールバックとして英語のバンドルを使用
-            bundle = ResourceBundle.getBundle(BUNDLE_NAME, Locale.ENGLISH);
+            bundle = ResourceBundle.getBundle(BUNDLE_NAME, Locale.ENGLISH, ResourceBundle.Control
+                    .getNoFallbackControl(ResourceBundle.Control.FORMAT_PROPERTIES));
         }
     }
 }

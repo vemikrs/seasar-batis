@@ -1,14 +1,12 @@
 plugins {
     // Apply the java-library plugin for API and implementation separation.
     id 'java-library'
-    // Apply the maven-publish plugin for publishing to a Maven repository.
-    id 'maven-publish'
-    id 'signing'
+    id 'com.vanniktech.maven.publish'
     id 'jacoco'
 }
 
 group = 'jp.vemi'
-version = '1.0.0-beta1'
+version = '1.0.0-beta.2'
 
 repositories {
     mavenCentral()
@@ -61,11 +59,38 @@ dependencies {
 }
 
 tasks.named('test') {
-    useJUnitPlatform()
+    // JUnit Platform を使用
+    useJUnitPlatform {
+        // junitTags システム/プロジェクトプロパティが指定された場合のみ includeTags を適用
+        def prop = System.getProperty('junitTags') ?: (project.hasProperty('junitTags') ? project.property('junitTags') : null)
+        if (prop) {
+            def tags = prop.toString().split(',').collect { it.trim() }.findAll { it }
+            if (!tags.isEmpty()) {
+                includeTags(tags as String[])
+            }
+        }
+    }
+
+    // 実行オプション
+    maxParallelForks = 1
     reports {
         html.required = true
-        junitXml.required = false
+        junitXml.required = true
     }
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+    withSourcesJar()
+    withJavadocJar()
+}
+
+javadoc {
+    options.addStringOption('Xdoclint:none', '-quiet')
+    options.addStringOption('Xmaxwarns', '1')
+    failOnError = false
 }
 
 jacocoTestReport {
@@ -73,5 +98,37 @@ jacocoTestReport {
         xml.required = false
         csv.required = false
         html.required = true
+    }
+}
+
+// Vanniktech Maven Publish Plugin - Central Portal 設定
+import com.vanniktech.maven.publish.SonatypeHost
+
+mavenPublishing {
+    publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL)
+    signAllPublications()
+    coordinates("jp.vemi", "seasar-batis", project.version as String)
+    pom {
+        name.set("SeasarBatis")
+        description.set("Seasar2-like MyBatis wrapper library that provides JdbcManager-like operations")
+        url.set("https://github.com/vemikrs/seasar-batis")
+        licenses {
+            license {
+                name.set("The Apache License, Version 2.0")
+                url.set("http://www.apache.org/licenses/LICENSE-2.0.txt")
+            }
+        }
+        developers {
+            developer {
+                id.set("vemikrs")
+                name.set("Hiroki Kurosawa")
+                email.set("contact@vemi.jp")
+            }
+        }
+        scm {
+            connection.set("scm:git:git://github.com/vemikrs/seasar-batis.git")
+            developerConnection.set("scm:git:ssh://git@github.com/vemikrs/seasar-batis.git")
+            url.set("https://github.com/vemikrs/seasar-batis")
+        }
     }
 }

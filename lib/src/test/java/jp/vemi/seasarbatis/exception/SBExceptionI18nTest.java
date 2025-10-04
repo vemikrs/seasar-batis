@@ -8,6 +8,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.Locale;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import jp.vemi.seasarbatis.core.i18n.SBMessageManager;
@@ -23,6 +24,7 @@ public class SBExceptionI18nTest {
     }
     
     @Test
+    @Tag("smoke")
     void testSBNoResultExceptionDefaultMessage() {
         SBMessageManager.getInstance().setLocale(Locale.ENGLISH);
         SBNoResultException exception = new SBNoResultException();

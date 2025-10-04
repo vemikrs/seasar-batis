@@ -15,6 +15,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.apache.ibatis.session.SqlSession;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -36,26 +37,20 @@ import jp.vemi.seasarbatis.test.entity.TestSbUser;
 class SbJdbcManagerTest {
 
     private SBJdbcManager jdbcManager;
-    private static boolean databaseInitialized = false;
+
+    @BeforeAll
+    void setUpOnce() throws Exception {
+        SBJdbcManagerFactory factory = new SBJdbcManagerFactory("mybatis-test-config.xml");
+        jdbcManager = factory.create();
+
+        initializeDatabase();
+    }
 
     @BeforeEach
     void setUp() throws Exception {
-        // ローカル開発ではH2を使用し、CI環境ではMySQLを使用
-        String configFile = System.getProperty("test.database", "h2").equals("mysql") 
-            ? "mybatis-test-config.xml" 
-            : "mybatis-h2-test-config.xml";
-        
-        SBJdbcManagerFactory factory = new SBJdbcManagerFactory(configFile);
-        jdbcManager = factory.create();
-
-        // 初回のみデータベース初期化を実行
-        if (!databaseInitialized) {
-            initializeDatabase();
-            databaseInitialized = true;
-        }
+        // 各テスト前には何もしない（データベースは@BeforeAllで初期化済み）
     }
 
-    @SuppressWarnings("unused")
     private void initializeDatabase() throws Exception {
         // H2使用時とMySQL使用時で異なるDDLを使用
         String databaseType = System.getProperty("test.database", "h2");
@@ -79,23 +74,28 @@ class SbJdbcManagerTest {
             String sql = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
             // セミコロンで分割して、空行以外を実行
             String[] commands = sql.split(";");
-            try (SqlSession session = jdbcManager.getSqlSessionFactory().openSession(true);  // autoCommit=true
+            try (SqlSession session = jdbcManager.getSqlSessionFactory().openSession(true);
                     Connection conn = session.getConnection();
                     Statement stmt = conn.createStatement()) {
+                // タイムアウトを設定
+                stmt.setQueryTimeout(5);
                 for (String cmd : commands) {
-                    if (!cmd.trim().isEmpty()) {
+                    String trimmed = cmd.trim();
+                    if (!trimmed.isEmpty()) {
                         try {
-                            int affected = stmt.executeUpdate(cmd);
-                            System.out.println("[INFO] SQL実行成功: " + cmd.trim() + " (影響行数: " + affected + ")");
+                            int affected = stmt.executeUpdate(trimmed);
+                            String preview = trimmed.substring(0, Math.min(50, trimmed.length()));
+                            System.out.println("[INFO] SQL実行成功: " + preview + "... (影響行数: " + affected + ")");
                         } catch (Exception e) {
-                            System.err.println("[ERROR] SQL実行失敗: " + cmd.trim());
+                            String preview = trimmed.substring(0, Math.min(50, trimmed.length()));
+                            System.err.println("[ERROR] SQL実行失敗: " + preview);
                             e.printStackTrace();
                             throw e;
                         }
                     }
                 }
                 
-                // H2の場合、データが正しく挿入されたか確認
+                // insertの場合、データが正しく挿入されたか確認
                 if (resourcePath.contains("insert")) {
                     try {
                         Statement verifyStmt = conn.createStatement();
@@ -123,6 +123,7 @@ class SbJdbcManagerTest {
 
     @Test
     @Order(1)
+    @org.junit.jupiter.api.Tag("smoke")
     void testFindByPk() {
         // テストデータ期待値
         TestSbUser expected = TestSbUser.builder()

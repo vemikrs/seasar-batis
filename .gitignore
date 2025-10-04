@@ -40,3 +40,6 @@ nbdist/
 
 # Ignore Gradle build output directory
 build
+
+# History files
+.history/

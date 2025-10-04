@@ -1,23 +1,46 @@
 {
-	"version": "2.0.0",
-	"tasks": [
-		{
-			"type": "gradle",
-			"id": "seasar-batiscleanseasar-batis",
-			"script": "clean",
-			"description": "Deletes the build directory.",
-			"group": "build",
-			"project": "seasar-batis",
-			"buildFile": "seasar-batis\\build.gradle",
-			"rootProject": "seasar-batis",
-			"projectFolder": "seasar-batis",
-			"workspaceFolder": "seasar-batis",
-			"args": "",
-			"javaDebug": false,
-			"problemMatcher": [
-				"$gradle"
-			],
-			"label": "gradle: clean"
-		}
-	]
+  // VS Code tasks for local runs
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Gradle: Build",
+      "type": "shell",
+      "command": "./gradlew clean build -x test -x javadoc -x javadocJar --no-daemon",
+      "group": "build",
+      "problemMatcher": [],
+      "options": { "cwd": "${workspaceFolder}" }
+    },
+      {
+        "label": "Gradle: Build+Docs",
+        "type": "shell",
+        "command": "./gradlew clean build --no-daemon",
+        "group": "build",
+        "problemMatcher": [],
+        "options": { "cwd": "${workspaceFolder}" }
+      },
+    {
+      "label": "Gradle: Clean",
+      "type": "shell",
+      "command": "./gradlew clean --no-daemon",
+      "group": "build",
+      "problemMatcher": [],
+      "options": { "cwd": "${workspaceFolder}" }
+    },
+    {
+      "label": "Gradle: H2 Full (local)",
+      "type": "shell",
+      "command": "./gradlew clean check jacocoTestReport --no-daemon -Duser.timezone=Asia/Tokyo",
+      "group": "build",
+      "problemMatcher": [],
+      "options": { "cwd": "${workspaceFolder}" }
+    },
+    {
+      "label": "Gradle: Env Smoke (local)",
+      "type": "shell",
+      "command": "./gradlew test --no-daemon -DjunitTags=smoke",
+      "group": "build",
+      "problemMatcher": [],
+      "options": { "cwd": "${workspaceFolder}" }
+    }
+  ]
 }

@@ -1,0 +1,112 @@
+name: Tests - Env Smoke Matrix
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
+jobs:
+  smoke-main:
+    name: Env Smoke (Java ${{ matrix.java }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      TZ: Asia/Tokyo
+    strategy:
+      fail-fast: true
+      matrix:
+        java: [ "17", "21" ]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Temurin JDK ${{ matrix.java }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+
+      - name: Setup Gradle (cache enabled)
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Restore Gradle wrapper jar from cache
+        uses: actions/cache@v4
+        with:
+          path: gradle/wrapper/gradle-wrapper.jar
+          key: gradle-wrapper-${{ runner.os }}-${{ hashFiles('gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-wrapper-${{ runner.os }}-
+
+      - name: Generate Gradle Wrapper
+        run: |
+          if [ ! -f gradle/wrapper/gradle-wrapper.jar ]; then
+            echo "📥 (bootstrap) Generating Gradle wrapper via system Gradle only — project build uses ./gradlew (9.1.0)"
+            GRADLE_VERSION=$(grep "distributionUrl" gradle/wrapper/gradle-wrapper.properties | sed 's/.*gradle-\(.*\)-bin.zip/\1/')
+            echo "Target Gradle version: $GRADLE_VERSION"
+            gradle -q wrapper --gradle-version "$GRADLE_VERSION" || gradle wrapper --gradle-version "$GRADLE_VERSION" --stacktrace
+            test -s gradle/wrapper/gradle-wrapper.jar && echo "✅ Gradle wrapper jar generated" || (echo "❌ Failed to generate gradle-wrapper.jar" && exit 1)
+          else
+            echo "✅ Gradle wrapper already exists"
+          fi
+
+      - name: Verify Gradle
+        run: ./gradlew --version
+
+      - name: Run smoke tests only (by tag)
+        run: |
+          set +e
+          # Run tests and generate JaCoCo in a single call for faster execution
+          OUTPUT=$(./gradlew :lib:test jacocoTestReport -PjunitTags=smoke 2>&1)
+          STATUS=$?
+          echo "$OUTPUT"
+          # 判定をログの文言ではなく成果物(XML)の有無で行う
+          RESULT_COUNT=$(find lib/build/test-results/test -type f -name '*.xml' -size +0 | wc -l || true)
+          if [ "$RESULT_COUNT" -eq 0 ]; then
+            echo "No @Tag(smoke) tests detected. Falling back to a fast subset (SBSqlParserTest, SBExceptionI18nTest)."
+            ./gradlew :lib:test jacocoTestReport \
+              --tests "jp.vemi.seasarbatis.sql.builder.SBSqlParserTest" \
+              --tests "jp.vemi.seasarbatis.exception.SBExceptionI18nTest"
+            STATUS=$?
+          fi
+          exit $STATUS
+
+      - name: Publish JUnit summary to PR
+        if: always()
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          files: "**/build/test-results/test/*.xml"
+          check_name: "JUnit Results (Smoke, Java ${{ matrix.java }})"
+          comment_mode: ${{ github.event_name == 'pull_request' && 'changes' || 'off' }}
+          compare_to_earlier_commit: true
+
+      - name: Upload test reports (XML/HTML)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: env-smoke-test-reports-java-${{ matrix.java }}
+          path: |
+            **/build/test-results/test/**/*.xml
+            **/build/reports/tests/test/**
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload JaCoCo reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: env-smoke-jacoco-java-${{ matrix.java }}
+          path: |
+            **/build/reports/jacoco/test/jacocoTestReport.xml
+            **/build/reports/jacoco/test/html/**
+          if-no-files-found: warn
+          retention-days: 14

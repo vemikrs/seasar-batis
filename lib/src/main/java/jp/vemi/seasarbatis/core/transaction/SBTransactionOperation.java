@@ -71,7 +71,36 @@ public class SBTransactionOperation {
             throw new SBTransactionException("transaction.error.already.started");
         }
         currentSession.set(session);
+        try {
+            SBThreadLocalDataSource.bind(session.getConnection());
+        } catch (Exception e) {
+            throw new SBTransactionException("transaction.error.execution", e);
+        }
         this.isActive = true;
+    }
+
+    /**
+     * 新しいトランザクションを開始します（親の接続バインドを一時停止してから新規確保）。
+     * 独立トランザクション（REQUIRES_NEW）で使用します。
+     *
+     * @param session SqlSession
+     */
+    public void beginIndependent(SqlSession session) {
+        if (isActive) {
+            throw new SBTransactionException("transaction.error.already.started");
+        }
+        // 親の BOUND 接続を使わないように一時停止した上で、新規セッションをバインド
+        SBThreadLocalDataSource.suspendBinding();
+        try {
+            currentSession.set(session);
+            SBThreadLocalDataSource.bind(session.getConnection());
+            this.isActive = true;
+        } catch (Exception e) {
+            throw new SBTransactionException("transaction.error.execution", e);
+        } finally {
+            // このスコープ内での新規確保が完了したら復帰
+            SBThreadLocalDataSource.resumeBinding();
+        }
     }
 
     /**
@@ -81,7 +110,8 @@ public class SBTransactionOperation {
         if (!isActive) {
             throw new SBTransactionException("transaction.error.not.started");
         }
-        currentSession.get().commit();
+        // DefaultSqlSession は dirty=false の場合に commit をスキップするため強制コミット
+        currentSession.get().commit(true);
     }
 
     /**
@@ -91,7 +121,8 @@ public class SBTransactionOperation {
         if (!isActive) {
             throw new SBTransactionException("transaction.error.not.started");
         }
-        currentSession.get().rollback();
+        // 外側のセッションで更新していなくても、物理コネクション上の変更を確実に取り消す
+        currentSession.get().rollback(true);
     }
 
     /**
@@ -104,6 +135,7 @@ public class SBTransactionOperation {
         try {
             currentSession.get().close();
         } finally {
+            SBThreadLocalDataSource.unbind();
             isActive = false;
             currentSession.remove();
         }
