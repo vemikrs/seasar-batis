@@ -59,7 +59,7 @@ jobs:
         if: always()
         uses: EnricoMi/publish-unit-test-result-action@v2
         with:
-          files: "**/build/test-results/test/*.xml"
+          files: "**/build/test-results/test/**/*.xml"
           check_name: "JUnit Results (H2 Full, Java 21)"
           comment_mode: "changes"
           compare_to_earlier_commit: true
@@ -70,7 +70,7 @@ jobs:
         with:
           name: h2-full-test-reports
           path: |
-            **/build/test-results/test/*.xml
+            **/build/test-results/test/**/*.xml
             **/build/reports/tests/test/**
           if-no-files-found: warn
           retention-days: 14
