@@ -1,9 +1,7 @@
 plugins {
     // Apply the java-library plugin for API and implementation separation.
     id 'java-library'
-    // Apply the maven-publish plugin for publishing to a Maven repository.
-    id 'maven-publish'
-    id 'signing'
+    id 'com.vanniktech.maven.publish'
     id 'jacoco'
 }
 
@@ -69,15 +67,9 @@ tasks.named('test') {
     }
 }
 
-// Generate sources and javadoc jars
-task sourcesJar(type: Jar) {
-    from sourceSets.main.allJava
-    archiveClassifier = 'sources'
-}
-
-task javadocJar(type: Jar) {
-    from javadoc
-    archiveClassifier = 'javadoc'
+java {
+    withSourcesJar()
+    withJavadocJar()
 }
 
 javadoc {
@@ -94,62 +86,34 @@ jacocoTestReport {
     }
 }
 
-// Maven publishing configuration
-publishing {
-    publications {
-        maven(MavenPublication) {
-            from components.java
-            
-            groupId = 'jp.vemi'
-            artifactId = 'seasar-batis'
-            version = project.version
-            
-            // Generate sources jar
-            artifact sourcesJar
-            // Generate javadoc jar
-            artifact javadocJar
-            
-            pom {
-                name = 'SeasarBatis'
-                description = 'Seasar2-like MyBatis wrapper library that provides JdbcManager-like operations'
-                url = 'https://github.com/vemic/seasar-batis'
-                
-                licenses {
-                    license {
-                        name = 'The Apache License, Version 2.0'
-                        url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
-                    }
-                }
-                
-                developers {
-                    developer {
-                        id = 'vemic'
-                        name = 'vemic'
-                        email = 'vemic@vemi.jp'
-                    }
-                }
-                
-                scm {
-                    connection = 'scm:git:git://github.com/vemic/seasar-batis.git'
-                    developerConnection = 'scm:git:ssh://github.com:vemic/seasar-batis.git'
-                    url = 'https://github.com/vemic/seasar-batis'
-                }
+// Vanniktech Maven Publish Plugin - Central Portal 設定
+import com.vanniktech.maven.publish.SonatypeHost
+
+mavenPublishing {
+    publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL)
+    signAllPublications()
+    coordinates("jp.vemi", "seasar-batis", project.version as String)
+    pom {
+        name.set("SeasarBatis")
+        description.set("Seasar2-like MyBatis wrapper library that provides JdbcManager-like operations")
+        url.set("https://github.com/vemikrs/seasar-batis")
+        licenses {
+            license {
+                name.set("The Apache License, Version 2.0")
+                url.set("http://www.apache.org/licenses/LICENSE-2.0.txt")
             }
         }
+        developers {
+            developer {
+                id.set("vemikrs")
+                name.set("Hiroki Kurosawa")
+                email.set("contact@vemi.jp")
+            }
+        }
+        scm {
+            connection.set("scm:git:git://github.com/vemikrs/seasar-batis.git")
+            developerConnection.set("scm:git:ssh://git@github.com/vemikrs/seasar-batis.git")
+            url.set("https://github.com/vemikrs/seasar-batis")
+        }
     }
-}
-
-// Signing configuration
-signing {
-    required { gradle.taskGraph.hasTask("publishToSonatype") }
-    
-    def signingKeyId = System.getenv("SIGNING_KEY_ID")
-    def signingPassword = System.getenv("SIGNING_PASSWORD")
-    def signingSecretKey = System.getenv("SIGNING_SECRET_KEY")
-    
-    if (signingKeyId && signingPassword && signingSecretKey) {
-        useInMemoryPgpKeys(signingKeyId, signingSecretKey, signingPassword)
-    }
-    
-    sign publishing.publications.maven
 }

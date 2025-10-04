@@ -1,3 +1,10 @@
 rootProject.name = 'seasar-batis'
 include 'lib'
 include 'spring'
+
+// Share plugin versions across subprojects
+pluginManagement {
+	plugins {
+		id 'com.vanniktech.maven.publish' version '0.30.0'
+	}
+}

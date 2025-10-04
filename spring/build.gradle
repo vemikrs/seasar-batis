@@ -1,7 +1,6 @@
 plugins {
     id 'java-library'
-    id 'maven-publish'
-    id 'signing'
+    id 'com.vanniktech.maven.publish'
 }
 
 group = 'jp.vemi'
@@ -36,10 +35,10 @@ dependencies {
     api 'org.springframework:spring-context:6.1.3'
     api 'org.springframework:spring-beans:6.1.3'
     api 'org.mybatis:mybatis-spring:3.0.3'
-    api 'org.mybatis:mybatis-spring:3.0.2'
-    
-    implementation 'org.springframework:spring-tx:5.3.29'
-    implementation 'org.springframework:spring-jdbc:5.3.29'
+
+    // Align Spring 6.x
+    implementation 'org.springframework:spring-tx:6.1.3'
+    implementation 'org.springframework:spring-jdbc:6.1.3'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test:3.2.2'
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.11.0'
@@ -48,15 +47,9 @@ dependencies {
     testImplementation 'com.h2database:h2:2.2.224'
 }
 
-// Generate sources and javadoc jars
-task sourcesJar(type: Jar) {
-    from sourceSets.main.allJava
-    archiveClassifier = 'sources'
-}
-
-task javadocJar(type: Jar) {
-    from javadoc
-    archiveClassifier = 'javadoc'
+java {
+    withSourcesJar()
+    withJavadocJar()
 }
 
 tasks.named('test') {
@@ -73,62 +66,34 @@ javadoc {
     failOnError = false
 }
 
-// Maven publishing configuration
-publishing {
-    publications {
-        maven(MavenPublication) {
-            from components.java
-            
-            groupId = 'jp.vemi'
-            artifactId = 'seasar-batis-spring'
-            version = project.version
-            
-            // Generate sources jar
-            artifact sourcesJar
-            // Generate javadoc jar
-            artifact javadocJar
-            
-            pom {
-                name = 'SeasarBatis Spring Integration'
-                description = 'Spring Framework integration module for SeasarBatis'
-                url = 'https://github.com/vemic/seasar-batis'
-                
-                licenses {
-                    license {
-                        name = 'The Apache License, Version 2.0'
-                        url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
-                    }
-                }
-                
-                developers {
-                    developer {
-                        id = 'vemic'
-                        name = 'vemic'
-                        email = 'vemic@vemi.jp'
-                    }
-                }
-                
-                scm {
-                    connection = 'scm:git:git://github.com/vemic/seasar-batis.git'
-                    developerConnection = 'scm:git:ssh://github.com:vemic/seasar-batis.git'
-                    url = 'https://github.com/vemic/seasar-batis'
-                }
+// Vanniktech Maven Publish Plugin - Central Portal 設定
+import com.vanniktech.maven.publish.SonatypeHost
+
+mavenPublishing {
+    publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL)
+    signAllPublications()
+    coordinates("jp.vemi", "seasar-batis-spring", project.version as String)
+    pom {
+        name.set("SeasarBatis Spring Integration")
+        description.set("Spring Framework integration module for SeasarBatis")
+        url.set("https://github.com/vemikrs/seasar-batis")
+        licenses {
+            license {
+                name.set("The Apache License, Version 2.0")
+                url.set("http://www.apache.org/licenses/LICENSE-2.0.txt")
             }
         }
+        developers {
+            developer {
+                id.set("vemikrs")
+                name.set("Hiroki Kurosawa")
+                email.set("contact@vemi.jp")
+            }
+        }
+        scm {
+            connection.set("scm:git:git://github.com/vemikrs/seasar-batis.git")
+            developerConnection.set("scm:git:ssh://git@github.com/vemikrs/seasar-batis.git")
+            url.set("https://github.com/vemikrs/seasar-batis")
+        }
     }
-}
-
-// Signing configuration
-signing {
-    required { gradle.taskGraph.hasTask("publishToSonatype") }
-    
-    def signingKeyId = System.getenv("SIGNING_KEY_ID")
-    def signingPassword = System.getenv("SIGNING_PASSWORD")
-    def signingSecretKey = System.getenv("SIGNING_SECRET_KEY")
-    
-    if (signingKeyId && signingPassword && signingSecretKey) {
-        useInMemoryPgpKeys(signingKeyId, signingSecretKey, signingPassword)
-    }
-    
-    sign publishing.publications.maven
 }
