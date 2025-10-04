@@ -44,11 +44,12 @@ java {
 }
 
 tasks.named<Test>("test").configure {
-    useJUnitPlatform()
-    val prop = System.getProperty("junitTags") ?: findProperty("junitTags")?.toString()
-    if (!prop.isNullOrBlank()) {
-        val tags = prop.split(',').map { it.trim() }.filter { it.isNotEmpty() }
-        if (tags.isNotEmpty()) includeTags(*tags.toTypedArray())
+    useJUnitPlatform {
+        val prop = System.getProperty("junitTags") ?: project.findProperty("junitTags")?.toString()
+        if (!prop.isNullOrBlank()) {
+            val tags = prop.split(',').map { it.trim() }.filter { it.isNotEmpty() }
+            if (tags.isNotEmpty()) includeTags(*tags.toTypedArray())
+        }
     }
     // Configure to not fail when no tests are discovered (Gradle 9+)
     failOnNoDiscoveredTests = false
@@ -63,9 +64,8 @@ tasks.withType<Javadoc>().configureEach {
     isFailOnError = false
 }
 
-import com.vanniktech.maven.publish.SonatypeHost
 mavenPublishing {
-    publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL)
+    publishToMavenCentral(com.vanniktech.maven.publish.SonatypeHost.CENTRAL_PORTAL)
     signAllPublications()
     coordinates("jp.vemi", "seasar-batis-spring", version.toString())
     pom {
@@ -91,4 +91,9 @@ mavenPublishing {
             url.set("https://github.com/vemikrs/seasar-batis")
         }
     }
+}
+
+// Duplicate resources handling (Gradle 9 requires explicit strategy on duplicates)
+tasks.named<org.gradle.language.jvm.tasks.ProcessResources>("processResources").configure {
+    duplicatesStrategy = org.gradle.api.file.DuplicatesStrategy.EXCLUDE
 }

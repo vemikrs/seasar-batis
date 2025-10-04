@@ -63,11 +63,12 @@ java {
 }
 
 tasks.named<Test>("test").configure {
-    useJUnitPlatform()
-    val prop = System.getProperty("junitTags") ?: findProperty("junitTags")?.toString()
-    if (!prop.isNullOrBlank()) {
-        val tags = prop.split(',').map { it.trim() }.filter { it.isNotEmpty() }
-        if (tags.isNotEmpty()) includeTags(*tags.toTypedArray())
+    useJUnitPlatform {
+        val prop = System.getProperty("junitTags") ?: project.findProperty("junitTags")?.toString()
+        if (!prop.isNullOrBlank()) {
+            val tags = prop.split(',').map { it.trim() }.filter { it.isNotEmpty() }
+            if (tags.isNotEmpty()) includeTags(*tags.toTypedArray())
+        }
     }
     maxParallelForks = 1
     reports { html.required.set(true); junitXml.required.set(true) }
@@ -84,9 +85,8 @@ tasks.named<JacocoReport>("jacocoTestReport").configure {
     reports { xml.required.set(false); csv.required.set(false); html.required.set(true) }
 }
 
-import com.vanniktech.maven.publish.SonatypeHost
 mavenPublishing {
-    publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL)
+    publishToMavenCentral(com.vanniktech.maven.publish.SonatypeHost.CENTRAL_PORTAL)
     signAllPublications()
     coordinates("jp.vemi", "seasar-batis", version.toString())
     pom {
