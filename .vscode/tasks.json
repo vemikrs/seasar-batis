@@ -5,42 +5,84 @@
     {
       "label": "Gradle: Build",
       "type": "shell",
-      "command": "./gradlew clean build -x test -x javadoc -x javadocJar --no-daemon",
-      "group": "build",
-      "problemMatcher": [],
-      "options": { "cwd": "${workspaceFolder}" }
-    },
-      {
-        "label": "Gradle: Build+Docs",
-        "type": "shell",
-        "command": "./gradlew clean build --no-daemon",
-        "group": "build",
-        "problemMatcher": [],
-        "options": { "cwd": "${workspaceFolder}" }
+      // Use gradle wrapper with args to avoid quoting issues, force bash on Linux/WSL
+      "command": "${workspaceFolder}/gradlew",
+      "args": ["clean", "build", "-x", "test", "-x", "javadoc", "-x", "javadocJar", "--no-daemon"],
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": ["$gradle"],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": { "executable": "/bin/bash", "args": ["-lc"] }
       },
+      "windows": {
+        // Optional Windows fallback when not using WSL Remote
+        "command": "${workspaceFolder}\\gradlew.bat",
+        "options": { "shell": { "executable": "C:/Windows/System32/cmd.exe", "args": ["/d", "/c"] } }
+      }
+    },
+    {
+      "label": "Gradle: Build+Docs",
+      "type": "shell",
+      "command": "${workspaceFolder}/gradlew",
+      "args": ["clean", "build", "--no-daemon"],
+      "group": "build",
+      "problemMatcher": ["$gradle"],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": { "executable": "/bin/bash", "args": ["-lc"] }
+      },
+      "windows": {
+        "command": "${workspaceFolder}\\gradlew.bat",
+        "options": { "shell": { "executable": "C:/Windows/System32/cmd.exe", "args": ["/d", "/c"] } }
+      }
+    },
     {
       "label": "Gradle: Clean",
       "type": "shell",
-      "command": "./gradlew clean --no-daemon",
+      "command": "${workspaceFolder}/gradlew",
+      "args": ["clean", "--no-daemon"],
       "group": "build",
-      "problemMatcher": [],
-      "options": { "cwd": "${workspaceFolder}" }
+      "problemMatcher": ["$gradle"],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": { "executable": "/bin/bash", "args": ["-lc"] }
+      },
+      "windows": {
+        "command": "${workspaceFolder}\\gradlew.bat",
+        "options": { "shell": { "executable": "C:/Windows/System32/cmd.exe", "args": ["/d", "/c"] } }
+      }
     },
     {
       "label": "Gradle: H2 Full (local)",
       "type": "shell",
-      "command": "./gradlew clean check jacocoTestReport --no-daemon -Duser.timezone=Asia/Tokyo",
+      "command": "${workspaceFolder}/gradlew",
+      "args": ["clean", "check", "jacocoTestReport", "--no-daemon", "-Duser.timezone=Asia/Tokyo"],
       "group": "build",
-      "problemMatcher": [],
-      "options": { "cwd": "${workspaceFolder}" }
+      "problemMatcher": ["$gradle"],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": { "executable": "/bin/bash", "args": ["-lc"] }
+      },
+      "windows": {
+        "command": "${workspaceFolder}\\gradlew.bat",
+        "options": { "shell": { "executable": "C:/Windows/System32/cmd.exe", "args": ["/d", "/c"] } }
+      }
     },
     {
       "label": "Gradle: Env Smoke (local)",
       "type": "shell",
-      "command": "./gradlew test --no-daemon -DjunitTags=smoke",
+      "command": "${workspaceFolder}/gradlew",
+      "args": ["test", "--no-daemon", "-DjunitTags=smoke"],
       "group": "build",
-      "problemMatcher": [],
-      "options": { "cwd": "${workspaceFolder}" }
+      "problemMatcher": ["$gradle"],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": { "executable": "/bin/bash", "args": ["-lc"] }
+      },
+      "windows": {
+        "command": "${workspaceFolder}\\gradlew.bat",
+        "options": { "shell": { "executable": "C:/Windows/System32/cmd.exe", "args": ["/d", "/c"] } }
+      }
     }
   ]
 }
