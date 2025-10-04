@@ -63,6 +63,7 @@ tasks.named('test') {
 javadoc {
     options.addStringOption('Xdoclint:none', '-quiet')
     options.addStringOption('Xmaxwarns', '1')
+    options.addBooleanOption('allow-script-in-comments', true)
     failOnError = false
 }
 
