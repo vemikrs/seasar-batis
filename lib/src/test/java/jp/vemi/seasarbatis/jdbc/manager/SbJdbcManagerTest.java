@@ -72,12 +72,15 @@ class SbJdbcManagerTest {
                 // タイムアウトを設定
                 stmt.setQueryTimeout(5);
                 for (String cmd : commands) {
-                    if (!cmd.trim().isEmpty()) {
+                    String trimmed = cmd.trim();
+                    if (!trimmed.isEmpty()) {
                         try {
-                            int affected = stmt.executeUpdate(cmd);
-                            System.out.println("[INFO] SQL実行成功: " + cmd.trim().substring(0, Math.min(50, cmd.trim().length())) + "... (影響行数: " + affected + ")");
+                            int affected = stmt.executeUpdate(trimmed);
+                            String preview = trimmed.substring(0, Math.min(50, trimmed.length()));
+                            System.out.println("[INFO] SQL実行成功: " + preview + "... (影響行数: " + affected + ")");
                         } catch (Exception e) {
-                            System.err.println("[ERROR] SQL実行失敗: " + cmd.trim().substring(0, Math.min(50, cmd.trim().length())));
+                            String preview = trimmed.substring(0, Math.min(50, trimmed.length()));
+                            System.err.println("[ERROR] SQL実行失敗: " + preview);
                             e.printStackTrace();
                             throw e;
                         }

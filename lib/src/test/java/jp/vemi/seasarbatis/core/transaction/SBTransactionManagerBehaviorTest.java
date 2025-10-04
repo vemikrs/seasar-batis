@@ -59,7 +59,7 @@ class SBTransactionManagerBehaviorTest {
         verify(sqlSessionFactory, times(1)).openSession(false);
         
         // セッションのメソッドが呼ばれたことを確認 
-        verify(sqlSession1, times(1)).commit();
+    verify(sqlSession1, times(1)).commit(true);
         verify(sqlSession1, times(1)).close();
     }
 
@@ -77,7 +77,7 @@ class SBTransactionManagerBehaviorTest {
         });
         
         // ロールバックが呼ばれたことを確認
-        verify(sqlSession1, times(1)).rollback();
+    verify(sqlSession1, times(1)).rollback(true);
         verify(sqlSession1, times(1)).close();
     }
 
@@ -96,7 +96,7 @@ class SBTransactionManagerBehaviorTest {
         
         // 新しいセッションが作成されたことを確認
         verify(sqlSessionFactory, times(1)).openSession(false);
-        verify(sqlSession1, times(1)).commit();
+    verify(sqlSession1, times(1)).commit(true);
         verify(sqlSession1, times(1)).close();
     }
 }
