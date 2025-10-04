@@ -12,6 +12,8 @@ concurrency:
 
 permissions:
   contents: read
+  checks: write  
+  pull-requests: write  
 
 jobs:
   h2-full-main:
@@ -65,9 +67,9 @@ jobs:
         if: always()
         uses: EnricoMi/publish-unit-test-result-action@v2
         with:
-          files: "**/build/test-results/test/**/*.xml"
+          files: "**/build/test-results/test/*.xml"
           check_name: "JUnit Results (H2 Full, Java 21)"
-          comment_mode: "changes"
+          comment_mode: "update"
           compare_to_earlier_commit: true
 
       - name: Upload test reports (XML/HTML)
