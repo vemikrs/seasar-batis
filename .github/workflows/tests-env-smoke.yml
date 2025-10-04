@@ -42,10 +42,10 @@ jobs:
       - name: Generate Gradle Wrapper
         run: |
           if [ ! -f gradle/wrapper/gradle-wrapper.jar ]; then
-            echo "📥 Generating Gradle wrapper via Gradle..."
+            echo "📥 (bootstrap) Generating Gradle wrapper via system Gradle only — project build uses ./gradlew (8.9)"
             GRADLE_VERSION=$(grep "distributionUrl" gradle/wrapper/gradle-wrapper.properties | sed 's/.*gradle-\(.*\)-bin.zip/\1/')
             echo "Target Gradle version: $GRADLE_VERSION"
-            gradle wrapper --gradle-version "$GRADLE_VERSION" --no-daemon --stacktrace
+            gradle -q wrapper --gradle-version "$GRADLE_VERSION" --no-daemon || gradle wrapper --gradle-version "$GRADLE_VERSION" --no-daemon --stacktrace
             test -s gradle/wrapper/gradle-wrapper.jar && echo "✅ Gradle wrapper jar generated" || (echo "❌ Failed to generate gradle-wrapper.jar" && exit 1)
           else
             echo "✅ Gradle wrapper already exists"
@@ -54,10 +54,21 @@ jobs:
       - name: Verify Gradle
         run: ./gradlew --version
 
-      - name: Run smoke tests only
+      - name: Run smoke tests only (by tag)
         run: |
-          # 現段階は Smoke を含むクラス名のみ実行
-          ./gradlew test --no-daemon --tests "*Smoke*"
+          # @Tag("smoke") でマーキングされた代表テストのみ実行。0件時は軽量サブセットにフォールバック
+          set +e
+          OUTPUT=$(./gradlew test --no-daemon -DjunitTags=smoke 2>&1)
+          STATUS=$?
+          echo "$OUTPUT"
+          if echo "$OUTPUT" | grep -qi "no tests"; then
+            echo "No @Tag(smoke) tests detected. Falling back to a fast subset (SBSqlParserTest, SBExceptionI18nTest)."
+            ./gradlew :lib:test --no-daemon \
+              --tests "jp.vemi.seasarbatis.sql.builder.SBSqlParserTest" \
+              --tests "jp.vemi.seasarbatis.exception.SBExceptionI18nTest"
+            STATUS=$?
+          fi
+          exit $STATUS
 
       - name: Generate JaCoCo (optional)
         run: ./gradlew jacocoTestReport --no-daemon
@@ -68,7 +79,7 @@ jobs:
         with:
           files: "**/build/test-results/test/*.xml"
           check_name: "JUnit Results (Smoke, Java ${{ matrix.java }})"
-          comment_mode: "update"
+          comment_mode: "changes"
           compare_to_earlier_commit: true
 
       - name: Upload test reports (XML/HTML)
