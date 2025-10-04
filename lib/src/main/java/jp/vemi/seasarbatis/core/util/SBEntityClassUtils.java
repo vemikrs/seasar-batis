@@ -18,6 +18,7 @@ import jp.vemi.seasarbatis.core.meta.SBColumnMeta;
  *             {@link jp.vemi.seasarbatis.core.util.SBTypeConverterUtils}
  *             を使用してください。
  */
+@Deprecated
 public class SBEntityClassUtils {
 
     public static <T> T mapToEntity(Class<T> entityClass, Map<String, Object> row) {
