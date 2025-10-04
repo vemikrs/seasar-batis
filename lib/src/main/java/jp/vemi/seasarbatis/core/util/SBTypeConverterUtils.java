@@ -102,11 +102,7 @@ public class SBTypeConverterUtils {
         if (targetType.isInstance(value)) {
             return value;
         }
-        // 数値系の変換
-        if (Number.class.isAssignableFrom(value.getClass()) || value instanceof BigDecimal) {
-            return convertNumber((Number) value, targetType, throwOnError);
-        }
-        // Boolean変換
+        // Boolean変換（数値からBoolean変換を優先）
         if (targetType == Boolean.class || targetType == boolean.class) {
             return convertToBoolean(value);
         }
@@ -123,6 +119,10 @@ public class SBTypeConverterUtils {
         }
         if (targetType == Time.class) {
             return convertToTime(value, throwOnError);
+        }
+        // 数値系の変換
+        if (Number.class.isAssignableFrom(value.getClass()) || value instanceof BigDecimal) {
+            return convertNumber((Number) value, targetType, throwOnError);
         }
         // それ以外の場合、toStringで生成
         return value.toString();
