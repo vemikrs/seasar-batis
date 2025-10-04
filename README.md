@@ -17,7 +17,7 @@ SeasarBatisは、Seasar2のJdbcManagerのような操作性を提供するMyBati
 <dependency>
     <groupId>jp.vemi</groupId>
     <artifactId>seasar-batis</artifactId>
-    <version>0.1.0</version>
+    <version>1.0.0</version>
 </dependency>
 
 <!-- 必要な依存関係 -->
@@ -31,7 +31,7 @@ SeasarBatisは、Seasar2のJdbcManagerのような操作性を提供するMyBati
 ### Gradle
 ```groovy
 dependencies {
-    implementation 'jp.vemi:seasar-batis:0.1.0'
+    implementation 'jp.vemi:seasar-batis:1.0.0'
     
     // 必要な依存関係
     implementation 'org.mybatis:mybatis:3.5.15'
@@ -52,6 +52,13 @@ Spring Frameworkと統合する場合は、以下の追加依存関係が必要�
 
 ### Maven
 ```xml
+<!-- SeasarBatis Spring統合モジュール -->
+<dependency>
+    <groupId>jp.vemi</groupId>
+    <artifactId>seasar-batis-spring</artifactId>
+    <version>1.0.0</version>
+</dependency>
+
 <!-- Spring統合用の追加依存関係 -->
 <dependency>
     <groupId>org.mybatis</groupId>
@@ -67,6 +74,9 @@ Spring Frameworkと統合する場合は、以下の追加依存関係が必要�
 
 ### Gradle
 ```groovy
+// SeasarBatis Spring統合モジュール
+implementation 'jp.vemi:seasar-batis-spring:1.0.0'
+
 // Spring統合用の追加依存関係
 implementation 'org.mybatis:mybatis-spring:3.0.3'
 implementation 'org.springframework:spring-jdbc:6.1.3'
