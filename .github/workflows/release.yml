@@ -36,23 +36,18 @@ jobs:
       with:
         java-version: '17'
         distribution: 'temurin'
+    
+    - name: Set up Gradle (for wrapper generation)
+      uses: gradle/actions/setup-gradle@v4
         
-    - name: Setup Gradle Wrapper
+    - name: Generate Gradle Wrapper
       run: |
         if [ ! -f gradle/wrapper/gradle-wrapper.jar ]; then
-          echo "📥 Preparing Gradle wrapper libs (without system Gradle)..."
+          echo "📥 Generating Gradle wrapper via Gradle..."
           GRADLE_VERSION=$(grep "distributionUrl" gradle/wrapper/gradle-wrapper.properties | sed 's/.*gradle-\(.*\)-bin.zip/\1/')
           echo "Target Gradle version: $GRADLE_VERSION"
-          TMP_ZIP=$(mktemp)
-          curl -fsSL "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip" -o "$TMP_ZIP"
-          mkdir -p gradle/wrapper
-          unzip -j -o "$TMP_ZIP" "gradle-${GRADLE_VERSION}/lib/plugins/gradle-wrapper-*.jar" -d gradle/wrapper
-          rm -f "$TMP_ZIP"
-          if compgen -G "gradle/wrapper/gradle-wrapper-*.jar" > /dev/null; then
-            echo "✅ Gradle wrapper libraries prepared"
-          else
-            echo "❌ Failed to prepare gradle wrapper libraries" && exit 1
-          fi
+          gradle wrapper --gradle-version "$GRADLE_VERSION" --no-daemon --stacktrace
+          test -s gradle/wrapper/gradle-wrapper.jar && echo "✅ Gradle wrapper jar generated" || (echo "❌ Failed to generate gradle-wrapper.jar" && exit 1)
         else
           echo "✅ Gradle wrapper already exists"
         fi
