@@ -15,7 +15,6 @@ permissions:
 
 jobs:
   smoke-main:
-    if: ${{ github.event_name != 'pull_request' }}
     name: Env Smoke (Java ${{ matrix.java }})
     runs-on: ubuntu-latest
     timeout-minutes: 30

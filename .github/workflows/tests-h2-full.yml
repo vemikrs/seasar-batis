@@ -15,7 +15,6 @@ permissions:
 
 jobs:
   h2-full-main:
-    if: ${{ github.event_name != 'pull_request' }}
     name: H2 Full Tests (Java 21)
     runs-on: ubuntu-latest
     timeout-minutes: 45
