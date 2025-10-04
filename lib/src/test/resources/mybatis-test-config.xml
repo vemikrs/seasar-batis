@@ -11,10 +11,10 @@
         <environment id="test">
             <transactionManager type="JDBC" />
             <dataSource type="POOLED">
-                <property name="driver" value="com.mysql.cj.jdbc.Driver" />
-                <property name="url" value="jdbc:mysql://localhost:3306/testdb?serverTimezone=UTC" />
-                <property name="username" value="testuser" />
-                <property name="password" value="testpass" />
+                <property name="driver" value="org.h2.Driver" />
+                <property name="url" value="jdbc:h2:mem:testdb;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE" />
+                <property name="username" value="sa" />
+                <property name="password" value="" />
             </dataSource>
         </environment>
     </environments>

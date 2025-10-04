@@ -190,7 +190,11 @@ public class SBQueryExecutor {
             ProcessedSql processedSql = sqlProcessor.process(sql, parameters);
             logger.debug("Executing SELECT SQL: {}", processedSql);
 
-            SqlSession session = txOperation.getCurrentSession();
+            SBTransactionOperation currentTxOperation = SBTransactionContext.getCurrentOperation();
+            if (currentTxOperation == null) {
+                currentTxOperation = txOperation;
+            }
+            SqlSession session = currentTxOperation.getCurrentSession();
             List<Map<String, Object>> rawResults = session.selectList("jp.vemi.seasarbatis.preparedSELECT",
                     Collections.singletonMap("_sql", processedSql.getSql()));
 

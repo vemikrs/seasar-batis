@@ -153,14 +153,30 @@ public class SBSelect<T> {
      */
     public List<T> getResultList() {
         try {
-            if (!txOperation.isActive()) {
-                txOperation.begin(sqlSessionFactory.openSession(false));
+            // 現在のトランザクション操作を優先（独立TX中など）
+            jp.vemi.seasarbatis.core.transaction.SBTransactionOperation current = jp.vemi.seasarbatis.core.transaction.SBTransactionContext.getCurrentOperation();
+            jp.vemi.seasarbatis.core.transaction.SBTransactionOperation op = (current != null) ? current : txOperation;
+
+            boolean startedHere = false;
+            if (!op.isActive()) {
+                op.begin(sqlSessionFactory.openSession(false));
+                startedHere = true;
             }
 
             if (sql != null) {
-                return queryExecutor.executeSelect(sql, params, entityClass);
+                List<T> results = queryExecutor.executeSelect(sql, params, entityClass);
+                if (startedHere) {
+                    op.commit();
+                    op.end();
+                }
+                return results;
             } else if (sqlFile != null) {
-                return queryExecutor.executeFile(sqlFile, params, CommandType.SELECT);
+                List<T> results = queryExecutor.executeFile(sqlFile, params, CommandType.SELECT);
+                if (startedHere) {
+                    op.commit();
+                    op.end();
+                }
+                return results;
             } else if (primaryKeys != null) {
                 // 主キーによる検索のロジック
                 SBPrimaryKeyInfo pkInfo = getPrimaryKeyInfo(entityClass);
@@ -176,11 +192,21 @@ public class SBSelect<T> {
                     params.put("pk" + i, primaryKeys.get(propertyName));
                 }
 
-                return queryExecutor.executeSelect(sqlBuilder.toString(), params, entityClass);
+                List<T> results = queryExecutor.executeSelect(sqlBuilder.toString(), params, entityClass);
+                if (startedHere) {
+                    op.commit();
+                    op.end();
+                }
+                return results;
             } else {
                 // 全件検索
                 String tableName = getTableName(entityClass);
-                return queryExecutor.executeSelect("SELECT * FROM " + tableName, params, entityClass);
+                List<T> results = queryExecutor.executeSelect("SELECT * FROM " + tableName, params, entityClass);
+                if (startedHere) {
+                    op.commit();
+                    op.end();
+                }
+                return results;
             }
         } catch (Exception e) {
             if (suppressException) {

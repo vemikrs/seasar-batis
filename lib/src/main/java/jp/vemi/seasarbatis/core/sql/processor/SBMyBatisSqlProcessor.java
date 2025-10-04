@@ -4,12 +4,13 @@
 package jp.vemi.seasarbatis.core.sql.processor;
 
 import java.text.SimpleDateFormat;
+import java.sql.Timestamp;
+import java.sql.Time;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
@@ -100,10 +101,32 @@ public class SBMyBatisSqlProcessor {
             // シングルクォートで囲んでエスケープ
             return dialect != null ? dialect.escapeString(escapedValue) : "'" + escapedValue + "'";
         }
-        if (value instanceof Date) {
-            // java.util.Date を yyyy-MM-dd HH:mm:ss 形式でフォーマット
+        // JDBC型（java.sql系）を優先して個別にフォーマット
+        if (value instanceof Timestamp) {
+            // TIMESTAMP => yyyy-MM-dd HH:mm:ss
             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-            String formattedValue = sdf.format((Date) value);
+            String formattedValue = sdf.format((Timestamp) value);
+            return dialect != null ? dialect.formatDate(formattedValue) : "'" + formattedValue + "'";
+        }
+    if (value instanceof java.sql.Date && !(value instanceof Timestamp)) {
+            // java.sql.Date は java.util.Date のサブクラスのため、順序に注意
+            // DATE => yyyy-MM-dd
+            if (value instanceof java.sql.Date) {
+                SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+                String formattedValue = sdf.format((java.sql.Date) value);
+                return dialect != null ? dialect.formatLocalDate(formattedValue) : "'" + formattedValue + "'";
+            }
+        }
+        if (value instanceof Time) {
+            // TIME => HH:mm:ss
+            SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
+            String formattedValue = sdf.format((Time) value);
+            return dialect != null ? dialect.formatLocalDateTime(formattedValue) : "'" + formattedValue + "'";
+        }
+    if (value instanceof java.util.Date) {
+            // java.util.Date（汎用） => yyyy-MM-dd HH:mm:ss
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            String formattedValue = sdf.format((java.util.Date) value);
             return dialect != null ? dialect.formatDate(formattedValue) : "'" + formattedValue + "'";
         }
         if (value instanceof LocalDate) {
