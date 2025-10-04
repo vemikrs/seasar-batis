@@ -25,7 +25,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        java: [ "17", "21", "23" ] # Ensure Java 17 or higher
+        java: [ "17", "21" ] # Gradle 8.9 officially supports up to Java 21
     steps:
       - name: Checkout
         uses: actions/checkout@v4
