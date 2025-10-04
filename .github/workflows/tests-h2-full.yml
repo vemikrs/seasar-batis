@@ -69,7 +69,7 @@ jobs:
         with:
           files: "**/build/test-results/test/*.xml"
           check_name: "JUnit Results (H2 Full, Java 21)"
-          comment_mode: "update"
+          comment_mode: ${{ github.event_name == 'pull_request' && 'changes' || 'off' }}
           compare_to_earlier_commit: true
 
       - name: Upload test reports (XML/HTML)
