@@ -40,17 +40,19 @@ jobs:
     - name: Setup Gradle Wrapper
       run: |
         if [ ! -f gradle/wrapper/gradle-wrapper.jar ]; then
-          echo "📥 Preparing gradle-wrapper.jar (without system Gradle)..."
+          echo "📥 Preparing Gradle wrapper libs (without system Gradle)..."
           GRADLE_VERSION=$(grep "distributionUrl" gradle/wrapper/gradle-wrapper.properties | sed 's/.*gradle-\(.*\)-bin.zip/\1/')
           echo "Target Gradle version: $GRADLE_VERSION"
           TMP_ZIP=$(mktemp)
           curl -fsSL "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip" -o "$TMP_ZIP"
           mkdir -p gradle/wrapper
           unzip -j -o "$TMP_ZIP" "gradle-${GRADLE_VERSION}/lib/plugins/gradle-wrapper-*.jar" -d gradle/wrapper
-          WRAP_JAR=$(ls gradle/wrapper/gradle-wrapper-*.jar 2>/dev/null | head -n1)
-          if [ -n "$WRAP_JAR" ]; then mv "$WRAP_JAR" gradle/wrapper/gradle-wrapper.jar; fi
           rm -f "$TMP_ZIP"
-          test -s gradle/wrapper/gradle-wrapper.jar && echo "✅ Gradle wrapper jar prepared" || (echo "❌ Failed to prepare gradle-wrapper.jar" && exit 1)
+          if compgen -G "gradle/wrapper/gradle-wrapper-*.jar" > /dev/null; then
+            echo "✅ Gradle wrapper libraries prepared"
+          else
+            echo "❌ Failed to prepare gradle wrapper libraries" && exit 1
+          fi
         else
           echo "✅ Gradle wrapper already exists"
         fi
