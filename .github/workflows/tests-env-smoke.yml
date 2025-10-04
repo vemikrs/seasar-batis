@@ -12,20 +12,22 @@ concurrency:
 
 permissions:
   contents: read
-  checks: write
-  pull-requests: write
 
 jobs:
-  smoke:
-    name: Env Smoke (Java ${{ matrix.java }})
+  # PR時は環境承認（tests-approval）を要求
+  smoke-pr:
+    if: ${{ github.event_name == 'pull_request' }}
+    name: Env Smoke (Java ${{ matrix.java }}) [PR]
     runs-on: ubuntu-latest
+    environment:
+      name: tests-approval
     timeout-minutes: 30
     env:
       TZ: Asia/Tokyo
     strategy:
       fail-fast: true
       matrix:
-        java: [ "17", "21" ] # Gradle 8.9 officially supports up to Java 21
+        java: [ "17", "21" ]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -38,6 +40,14 @@ jobs:
 
       - name: Setup Gradle (cache enabled)
         uses: gradle/actions/setup-gradle@v4
+
+      - name: Restore Gradle wrapper jar from cache
+        uses: actions/cache@v4
+        with:
+          path: gradle/wrapper/gradle-wrapper.jar
+          key: gradle-wrapper-${{ runner.os }}-${{ hashFiles('gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-wrapper-${{ runner.os }}-
 
       - name: Generate Gradle Wrapper
         run: |
@@ -73,14 +83,93 @@ jobs:
       - name: Generate JaCoCo (optional)
         run: ./gradlew jacocoTestReport --no-daemon
 
-      - name: Publish JUnit summary to PR
+      - name: Upload test reports (XML/HTML)
         if: always()
-        uses: EnricoMi/publish-unit-test-result-action@v2
+        uses: actions/upload-artifact@v4
         with:
-          files: "**/build/test-results/test/**/*.xml"
-          check_name: "JUnit Results (Smoke, Java ${{ matrix.java }})"
-          comment_mode: "changes"
-          compare_to_earlier_commit: true
+          name: env-smoke-test-reports-java-${{ matrix.java }}
+          path: |
+            **/build/test-results/test/**/*.xml
+            **/build/reports/tests/test/**
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload JaCoCo reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: env-smoke-jacoco-java-${{ matrix.java }}
+          path: |
+            **/build/reports/jacoco/test/jacocoTestReport.xml
+            **/build/reports/jacoco/test/html/**
+          if-no-files-found: warn
+          retention-days: 14
+
+  # push(main) や手動実行では承認なしで実行
+  smoke-main:
+    if: ${{ github.event_name != 'pull_request' }}
+    name: Env Smoke (Java ${{ matrix.java }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      TZ: Asia/Tokyo
+    strategy:
+      fail-fast: true
+      matrix:
+        java: [ "17", "21" ]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Temurin JDK ${{ matrix.java }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+
+      - name: Setup Gradle (cache enabled)
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Restore Gradle wrapper jar from cache
+        uses: actions/cache@v4
+        with:
+          path: gradle/wrapper/gradle-wrapper.jar
+          key: gradle-wrapper-${{ runner.os }}-${{ hashFiles('gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-wrapper-${{ runner.os }}-
+
+      - name: Generate Gradle Wrapper
+        run: |
+          if [ ! -f gradle/wrapper/gradle-wrapper.jar ]; then
+            echo "📥 (bootstrap) Generating Gradle wrapper via system Gradle only — project build uses ./gradlew (8.9)"
+            GRADLE_VERSION=$(grep "distributionUrl" gradle/wrapper/gradle-wrapper.properties | sed 's/.*gradle-\(.*\)-bin.zip/\1/')
+            echo "Target Gradle version: $GRADLE_VERSION"
+            gradle -q wrapper --gradle-version "$GRADLE_VERSION" --no-daemon || gradle wrapper --gradle-version "$GRADLE_VERSION" --no-daemon --stacktrace
+            test -s gradle/wrapper/gradle-wrapper.jar && echo "✅ Gradle wrapper jar generated" || (echo "❌ Failed to generate gradle-wrapper.jar" && exit 1)
+          else
+            echo "✅ Gradle wrapper already exists"
+          fi
+
+      - name: Verify Gradle
+        run: ./gradlew --version
+
+      - name: Run smoke tests only (by tag)
+        run: |
+          set +e
+          OUTPUT=$(./gradlew test --no-daemon -DjunitTags=smoke 2>&1)
+          STATUS=$?
+          echo "$OUTPUT"
+          if echo "$OUTPUT" | grep -qi "no tests"; then
+            echo "No @Tag(smoke) tests detected. Falling back to a fast subset (SBSqlParserTest, SBExceptionI18nTest)."
+            ./gradlew :lib:test --no-daemon \
+              --tests "jp.vemi.seasarbatis.sql.builder.SBSqlParserTest" \
+              --tests "jp.vemi.seasarbatis.exception.SBExceptionI18nTest"
+            STATUS=$?
+          fi
+          exit $STATUS
+
+      - name: Generate JaCoCo (optional)
+        run: ./gradlew jacocoTestReport --no-daemon
 
       - name: Upload test reports (XML/HTML)
         if: always()
