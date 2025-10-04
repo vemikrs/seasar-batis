@@ -43,7 +43,7 @@ dependencies {
     implementation("org.apache.commons:commons-dbcp2:2.13.0")
 
     // Runtime only dependencies are not added to the compile classpath of projects that depend on this project.
-    runtimeOnly("mysql:mysql-connector-java:8.0.32")
+    runtimeOnly("mysql:mysql-connector-java:8.0.33")
 
     // Lombok for generating boilerplate code.
     compileOnly("org.projectlombok:lombok:1.18.30")
