@@ -69,6 +69,22 @@
       }
     },
     {
+      "label": "Gradle: lib:test",
+      "type": "shell",
+      "command": "${workspaceFolder}/gradlew",
+      "args": [":lib:test", "--no-daemon"],
+      "group": "test",
+      "problemMatcher": ["$gradle"],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": { "executable": "/bin/bash", "args": ["-lc"] }
+      },
+      "windows": {
+        "command": "${workspaceFolder}\\gradlew.bat",
+        "options": { "shell": { "executable": "C:/Windows/System32/cmd.exe", "args": ["/d", "/c"] } }
+      }
+    },
+    {
       "label": "Gradle: Env Smoke (local)",
       "type": "shell",
       "command": "${workspaceFolder}/gradlew",
