@@ -13,7 +13,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.ServiceLoader;
 import java.util.regex.Matcher;
 import java.util.stream.Collectors;
 
@@ -23,6 +22,9 @@ import org.apache.ibatis.mapping.SqlCommandType;
 import org.apache.ibatis.scripting.xmltags.DynamicSqlSource;
 import org.apache.ibatis.scripting.xmltags.TextSqlNode;
 import org.apache.ibatis.session.Configuration;
+
+import jp.vemi.seasarbatis.core.sql.dialect.SBDialect;
+import jp.vemi.seasarbatis.core.sql.dialect.PostgresDialect;
 
 /**
  * MyBatisの機能を使用してSQLを処理し、パラメータの値を埋め込んだSQL文字列を返します。
@@ -35,10 +37,28 @@ import org.apache.ibatis.session.Configuration;
  * </p>
  *
  * @author H.Kurosawa
- * @version 1.0.0
+ * @version 0.1.0
  * @since 2025/01/01
  */
 public class SBMyBatisSqlProcessor {
+
+    private final SBDialect dialect;
+
+    /**
+     * デフォルトコンストラクタ。PostgresDialectを使用します。
+     */
+    public SBMyBatisSqlProcessor() {
+        this(new PostgresDialect());
+    }
+
+    /**
+     * Dialectを指定するコンストラクタ。
+     *
+     * @param dialect 使用するDialect
+     */
+    public SBMyBatisSqlProcessor(SBDialect dialect) {
+        this.dialect = dialect != null ? dialect : new PostgresDialect();
+    }
 
     /**
      * SQLを処理します。
@@ -48,15 +68,14 @@ public class SBMyBatisSqlProcessor {
      * @param parameters バインドパラメータ
      * @return バインド変数に値が代入されたSQL文字列
      */
-    public static String process(String sql, Configuration configuration, Map<String, Object> parameters) {
+    public String process(String sql, Configuration configuration, Map<String, Object> parameters) {
         List<ParameterMapping> parameterMappings = getParameterMappings(configuration, sql);
         String sqlWithPlaceholders = sql;
 
         // プレースホルダをパラメータの値に置換
-        Dialect dialect = loadDialect();
         for (ParameterMapping mapping : parameterMappings) {
             Object value = parameters.get(mapping.getProperty());
-            String replacement = formatParameter(value, dialect);
+            String replacement = formatParameter(value);
             // MyBatisのプレースホルダをエスケープして1回分の置換を実施
             String property = "\\#\\{" + mapping.getProperty() + "\\}";
             sqlWithPlaceholders = sqlWithPlaceholders.replaceFirst(property, Matcher.quoteReplacement(replacement));
@@ -71,7 +90,7 @@ public class SBMyBatisSqlProcessor {
      * @param sql               SQL文
      * @return パラメータマッピングリスト
      */
-    private static List<ParameterMapping> getParameterMappings(Configuration configuration, String sql) {
+    private List<ParameterMapping> getParameterMappings(Configuration configuration, String sql) {
         DynamicSqlSource sqlSource = new DynamicSqlSource(configuration, new TextSqlNode(sql));
         // ダミーのMappedStatementを生成
         MappedStatement ms = new MappedStatement.Builder(configuration, "dummy", sqlSource, SqlCommandType.SELECT)
@@ -88,151 +107,64 @@ public class SBMyBatisSqlProcessor {
      * </p>
      *
      * @param value   パラメータ値
-     * @param dialect SQLの方言
      * @return SQLに埋め込む形式の文字列
      */
-    private static String formatParameter(Object value, Dialect dialect) {
+    private String formatParameter(Object value) {
         if (value == null) {
-            return "null";
+            return "NULL";
         }
         if (value instanceof String) {
-            // 文字列をエスケープ
-            String escapedValue = escapeSql(value.toString(), dialect);
-            // シングルクォートで囲んでエスケープ
-            return dialect != null ? dialect.escapeString(escapedValue) : "'" + escapedValue + "'";
+            return dialect.formatString(value.toString());
         }
         // JDBC型（java.sql系）を優先して個別にフォーマット
         if (value instanceof Timestamp) {
-            // TIMESTAMP => yyyy-MM-dd HH:mm:ss
             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
             String formattedValue = sdf.format((Timestamp) value);
-            return dialect != null ? dialect.formatDate(formattedValue) : "'" + formattedValue + "'";
+            return dialect.formatTimestamp(formattedValue);
         }
-    if (value instanceof java.sql.Date && !(value instanceof Timestamp)) {
-            // java.sql.Date は java.util.Date のサブクラスのため、順序に注意
-            // DATE => yyyy-MM-dd
-            if (value instanceof java.sql.Date) {
-                SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
-                String formattedValue = sdf.format((java.sql.Date) value);
-                return dialect != null ? dialect.formatLocalDate(formattedValue) : "'" + formattedValue + "'";
-            }
+        if (value instanceof java.sql.Date && !(value instanceof Timestamp)) {
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+            String formattedValue = sdf.format((java.sql.Date) value);
+            return dialect.formatDate(formattedValue + " 00:00:00");
         }
         if (value instanceof Time) {
-            // TIME => HH:mm:ss
             SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
             String formattedValue = sdf.format((Time) value);
-            return dialect != null ? dialect.formatLocalDateTime(formattedValue) : "'" + formattedValue + "'";
+            return dialect.formatTimestamp("1970-01-01 " + formattedValue);
         }
-    if (value instanceof java.util.Date) {
-            // java.util.Date（汎用） => yyyy-MM-dd HH:mm:ss
+        if (value instanceof java.util.Date) {
             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
             String formattedValue = sdf.format((java.util.Date) value);
-            return dialect != null ? dialect.formatDate(formattedValue) : "'" + formattedValue + "'";
+            return dialect.formatDate(formattedValue);
         }
         if (value instanceof LocalDate) {
-            // java.time.LocalDate を ISO_LOCAL_DATE 形式 (yyyy-MM-dd) でフォーマット
             DateTimeFormatter dtf = DateTimeFormatter.ISO_LOCAL_DATE;
             String formattedValue = ((LocalDate) value).format(dtf);
-            return dialect != null ? dialect.formatLocalDate(formattedValue) : "'" + formattedValue + "'";
+            return dialect.formatDate(formattedValue + " 00:00:00");
         }
         if (value instanceof LocalDateTime) {
-            // java.time.LocalDateTime を yyyy-MM-dd HH:mm:ss 形式でフォーマット
             DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
             String formattedValue = ((LocalDateTime) value).format(dtf);
-            return dialect != null ? dialect.formatLocalDateTime(formattedValue) : "'" + formattedValue + "'";
+            return dialect.formatTimestamp(formattedValue);
         }
         if (value instanceof Number) {
-            // 数値型はそのまま文字列に変換
             return value.toString();
         }
         if (value instanceof Boolean) {
-            // Boolean型はtrueまたはfalseを文字列に変換
             return value.toString();
         }
         if (value.getClass().isArray()) {
-            // 配列の場合、各要素をフォーマットしてカンマ区切りで連結
             String formattedValue = Arrays.stream((Object[]) value)
-                    .map(v -> formatParameter(v, dialect))
+                    .map(this::formatParameter)
                     .collect(Collectors.joining(", "));
-            return "(" + formattedValue + ")";
+            return dialect.formatArray(formattedValue);
         }
         if (value instanceof Collection) {
-            // Collectionの場合、各要素をフォーマットしてカンマ区切りで連結
             String formattedValue = ((Collection<?>) value).stream()
-                    .map(v -> formatParameter(v, dialect))
+                    .map(this::formatParameter)
                     .collect(Collectors.joining(", "));
-            return "(" + formattedValue + ")";
+            return dialect.formatArray(formattedValue);
         }
-        // 上記以外の型はtoString()で変換
         return value.toString();
-    }
-
-    /**
-     * SQLインジェクション対策のエスケープ処理を行います。
-     *
-     * @param value   エスケープする文字列
-     * @param dialect SQLの方言
-     * @return エスケープされた文字列
-     */
-    private static String escapeSql(String value, Dialect dialect) {
-        if (value == null || value.isEmpty()) {
-            return value;
-        }
-
-        if (dialect != null) {
-            return dialect.escapeString(value);
-        }
-
-        // デフォルトのエスケープ処理
-        String escapedValue = value.replace("'", "''");
-        escapedValue = escapedValue.replace("\\", "\\\\");
-        return escapedValue;
-    }
-
-    /**
-     * データベースの方言をロードします。
-     *
-     * @return データベースの方言
-     */
-    private static Dialect loadDialect() {
-        ServiceLoader<Dialect> loader = ServiceLoader.load(Dialect.class);
-        return loader.findFirst().orElse(null);
-    }
-
-    /**
-     * SQLの方言インターフェース
-     */
-    public interface Dialect {
-        /**
-         * 文字列をエスケープします。
-         *
-         * @param value エスケープする文字列
-         * @return エスケープされた文字列
-         */
-        String escapeString(String value);
-
-        /**
-         * 日付をフォーマットします。
-         *
-         * @param value フォーマットする日付
-         * @return フォーマットされた日付
-         */
-        String formatDate(String value);
-
-        /**
-         * LocalDateをフォーマットします。
-         *
-         * @param value フォーマットするLocalDate
-         * @return フォーマットされたLocalDate
-         */
-        String formatLocalDate(String value);
-
-        /**
-         * LocalDateTimeをフォーマットします。
-         *
-         * @param value フォーマットするLocalDateTime
-         * @return フォーマットされたLocalDateTime
-         */
-        String formatLocalDateTime(String value);
     }
 }

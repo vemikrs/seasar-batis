@@ -11,6 +11,8 @@ import org.apache.ibatis.session.Configuration;
 
 import jp.vemi.seasarbatis.core.sql.ParsedSql;
 import jp.vemi.seasarbatis.core.sql.ProcessedSql;
+import jp.vemi.seasarbatis.core.sql.dialect.SBDialect;
+import jp.vemi.seasarbatis.core.sql.dialect.PostgresDialect;
 import jp.vemi.seasarbatis.core.sql.loader.SBSqlFileLoader;
 
 /**
@@ -21,19 +23,32 @@ import jp.vemi.seasarbatis.core.sql.loader.SBSqlFileLoader;
  * </p>
  *
  * @author H.Kurosawa
- * @version 1.0.0
+ * @version 0.1.0
  * @since 2025/01/01
  */
 public class SBSqlProcessor {
     private final Configuration configuration;
+    private final SBMyBatisSqlProcessor mybatisSqlProcessor;
+
+    /**
+     * SBSqlProcessorを構築します。
+     * デフォルトでPostgreSQLダイアレクトを使用します。
+     *
+     * @param configuration MyBatisの設定オブジェクト
+     */
+    public SBSqlProcessor(Configuration configuration) {
+        this(configuration, new PostgresDialect());
+    }
 
     /**
      * SBSqlProcessorを構築します。
      *
      * @param configuration MyBatisの設定オブジェクト
+     * @param dialect データベースダイアレクト
      */
-    public SBSqlProcessor(Configuration configuration) {
+    public SBSqlProcessor(Configuration configuration, SBDialect dialect) {
         this.configuration = configuration;
+        this.mybatisSqlProcessor = new SBMyBatisSqlProcessor(dialect);
     }
 
     /**
@@ -54,7 +69,7 @@ public class SBSqlProcessor {
             effectiveParameters.putAll(parsedSql.getParameterValues());
         }
 
-        String processedSql = SBMyBatisSqlProcessor.process(
+        String processedSql = mybatisSqlProcessor.process(
                 parsedSql.getSql(),
                 configuration,
                 effectiveParameters);
