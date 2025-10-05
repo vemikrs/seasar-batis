@@ -4,6 +4,7 @@
 package jp.vemi.seasarbatis.core.sql.processor;
 
 import java.io.IOException;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import org.apache.ibatis.session.Configuration;
@@ -45,10 +46,18 @@ public class SBSqlProcessor {
     public ProcessedSql process(String sql, Map<String, Object> parameters) {
         ParsedSql parsedSql = SBSqlParser.parse(sql, parameters);
 
+        Map<String, Object> effectiveParameters = new LinkedHashMap<>();
+        if (parameters != null) {
+            effectiveParameters.putAll(parameters);
+        }
+        if (parsedSql.getParameterValues() != null && !parsedSql.getParameterValues().isEmpty()) {
+            effectiveParameters.putAll(parsedSql.getParameterValues());
+        }
+
         String processedSql = SBMyBatisSqlProcessor.process(
                 parsedSql.getSql(),
                 configuration,
-                parameters);
+                effectiveParameters);
 
         return ProcessedSql.builder()
                 .sql(processedSql)

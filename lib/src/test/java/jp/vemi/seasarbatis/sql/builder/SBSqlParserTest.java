@@ -255,13 +255,21 @@ class SBSqlParserTest {
 
         ParsedSql parsedSql = SBSqlParser.parse(sql, params);
         String result = parsedSql.getSql();
-        System.out.println(result);
-        assertTrue(result.contains("id IN #{ids}"));
+        assertTrue(result.contains("id IN (#{ids_0}, #{ids_1}, #{ids_2})"));
         assertTrue(result.contains("name LIKE #{namePattern}"));
         assertTrue(result.contains("amount > #{minAmount}"));
         assertTrue(result.contains("status IS #{nullableStatus}"));
         assertFalse(result.contains("/*"));
         assertFalse(result.contains("*/"));
+
+        Map<String, Object> expanded = parsedSql.getParameterValues();
+        assertEquals(3, expanded.entrySet().stream().filter(e -> e.getKey().startsWith("ids_")).count());
+        assertEquals(1, expanded.get("ids_0"));
+        assertEquals(2, expanded.get("ids_1"));
+        assertEquals(3, expanded.get("ids_2"));
+        assertTrue(expanded.containsKey("namePattern"));
+        assertTrue(expanded.containsKey("minAmount"));
+        assertTrue(expanded.containsKey("nullableStatus"));
     }
 
     @Test

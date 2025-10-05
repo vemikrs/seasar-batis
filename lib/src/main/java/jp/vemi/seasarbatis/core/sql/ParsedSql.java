@@ -10,4 +10,5 @@ package jp.vemi.seasarbatis.core.sql;
 public class ParsedSql {
     private String sql;
     private java.util.List<String> parameterNames;
+    private java.util.Map<String, Object> parameterValues;
 }

@@ -83,6 +83,86 @@
         "command": "${workspaceFolder}\\gradlew.bat",
         "options": { "shell": { "executable": "C:/Windows/System32/cmd.exe", "args": ["/d", "/c"] } }
       }
+    },
+    {
+      "label": "Gradle: Integration H2",
+      "type": "shell",
+      "command": "${workspaceFolder}/gradlew",
+      "args": ["test", "--no-daemon", "-DjunitTags=integration", "--tests", "jp.vemi.seasarbatis.jdbc.SBJdbcManagerSqlFileIntegrationH2Test"],
+  "group": "test",
+      "problemMatcher": ["$gradle"],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": { "executable": "/bin/bash", "args": ["-lc"] }
+      },
+      "windows": {
+        "command": "${workspaceFolder}\\gradlew.bat",
+        "options": { "shell": { "executable": "C:/Windows/System32/cmd.exe", "args": ["/d", "/c"] } }
+      }
+    },
+    {
+      "label": "Gradle: Integration MySQL",
+      "type": "shell",
+      "command": "${workspaceFolder}/gradlew",
+      "args": ["test", "--no-daemon", "-DjunitTags=integration", "--tests", "jp.vemi.seasarbatis.jdbc.SBJdbcManagerSqlFileIntegrationMySQLTest"],
+  "group": "test",
+      "problemMatcher": ["$gradle"],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": { "executable": "/bin/bash", "args": ["-lc"] }
+      },
+      "windows": {
+        "command": "${workspaceFolder}\\gradlew.bat",
+        "options": { "shell": { "executable": "C:/Windows/System32/cmd.exe", "args": ["/d", "/c"] } }
+      }
+    },
+    {
+      "label": "Gradle: Integration Oracle",
+      "type": "shell",
+      "command": "${workspaceFolder}/gradlew",
+      "args": ["test", "--no-daemon", "-DjunitTags=integration", "--tests", "jp.vemi.seasarbatis.jdbc.SBJdbcManagerSqlFileIntegrationOracleTest"],
+  "group": "test",
+      "problemMatcher": ["$gradle"],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": { "executable": "/bin/bash", "args": ["-lc"] }
+      },
+      "windows": {
+        "command": "${workspaceFolder}\\gradlew.bat",
+        "options": { "shell": { "executable": "C:/Windows/System32/cmd.exe", "args": ["/d", "/c"] } }
+      }
+    },
+    {
+      "label": "Gradle: Integration Postgres",
+      "type": "shell",
+      "command": "${workspaceFolder}/gradlew",
+      "args": ["test", "--no-daemon", "-DjunitTags=integration", "--tests", "jp.vemi.seasarbatis.jdbc.SBJdbcManagerSqlFileIntegrationPostgresTest"],
+  "group": "test",
+      "problemMatcher": ["$gradle"],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": { "executable": "/bin/bash", "args": ["-lc"] }
+      },
+      "windows": {
+        "command": "${workspaceFolder}\\gradlew.bat",
+        "options": { "shell": { "executable": "C:/Windows/System32/cmd.exe", "args": ["/d", "/c"] } }
+      }
+    },
+    {
+      "label": "Gradle: Integration SQLServer",
+      "type": "shell",
+      "command": "${workspaceFolder}/gradlew",
+      "args": ["test", "--no-daemon", "-DjunitTags=integration", "--tests", "jp.vemi.seasarbatis.jdbc.SBJdbcManagerSqlFileIntegrationSqlServerTest"],
+      "group": "test",
+      "problemMatcher": ["$gradle"],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": { "executable": "/bin/bash", "args": ["-lc"] }
+      },
+      "windows": {
+        "command": "${workspaceFolder}\\gradlew.bat",
+        "options": { "shell": { "executable": "C:/Windows/System32/cmd.exe", "args": ["/d", "/c"] } }
+      }
     }
   ]
 }

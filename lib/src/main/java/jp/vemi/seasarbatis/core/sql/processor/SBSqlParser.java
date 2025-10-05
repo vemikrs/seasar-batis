@@ -3,12 +3,15 @@
  */
 package jp.vemi.seasarbatis.core.sql.processor;
 
+import java.lang.reflect.Array;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -60,6 +63,7 @@ public class SBSqlParser {
         return ParsedSql.builder()
                 .sql(renderer.getSql())
                 .parameterNames(renderer.getParameterNames())
+                .parameterValues(renderer.getParameterValues())
                 .build();
     }
 
@@ -68,16 +72,20 @@ public class SBSqlParser {
     }
 
     private static final class RenderOutput {
-        private static final RenderOutput EMPTY = new RenderOutput("", Collections.emptyList(), false);
+        private static final RenderOutput EMPTY = new RenderOutput("", Collections.emptyList(), false,
+                Collections.emptyMap());
 
         private final String sql;
         private final List<String> parameterNames;
         private final boolean dynamic;
+        private final Map<String, Object> parameterValues;
 
-        private RenderOutput(String sql, List<String> parameterNames, boolean dynamic) {
+        private RenderOutput(String sql, List<String> parameterNames, boolean dynamic,
+                Map<String, Object> parameterValues) {
             this.sql = sql;
             this.parameterNames = parameterNames;
             this.dynamic = dynamic;
+            this.parameterValues = parameterValues;
         }
     }
 
@@ -90,7 +98,7 @@ public class SBSqlParser {
 
         @Override
         public RenderOutput render(Map<String, Object> parameters) {
-            return new RenderOutput(text, Collections.emptyList(), false);
+            return new RenderOutput(text, Collections.emptyList(), false, Collections.emptyMap());
         }
     }
 
@@ -107,12 +115,75 @@ public class SBSqlParser {
         public RenderOutput render(Map<String, Object> parameters) {
             boolean hasParam = parameters != null && parameters.containsKey(name);
             if (hasParam) {
-                return new RenderOutput("#{" + name + "}", Collections.singletonList(name), true);
+                Map<String, Object> safeParameters = Objects.requireNonNull(parameters);
+                Object value = safeParameters.get(name);
+                if (isCollectionLike(value)) {
+                    return renderCollectionValues(value);
+                }
+                Map<String, Object> values = new LinkedHashMap<>();
+                values.put(name, value);
+                return new RenderOutput("#{" + name + "}", Collections.singletonList(name), true, values);
             }
             if (!defaultLiteral.isEmpty()) {
-                return new RenderOutput(defaultLiteral, Collections.emptyList(), false);
+                return new RenderOutput(defaultLiteral, Collections.emptyList(), false, Collections.emptyMap());
             }
             return RenderOutput.EMPTY;
+        }
+
+        private RenderOutput renderCollectionValues(Object value) {
+            List<Object> elements = toElementList(value);
+            if (elements.isEmpty()) {
+                if (!defaultLiteral.isEmpty()) {
+                    return new RenderOutput(defaultLiteral, Collections.emptyList(), false, Collections.emptyMap());
+                }
+                return RenderOutput.EMPTY;
+            }
+
+            Map<String, Object> expandedValues = new LinkedHashMap<>();
+            List<String> names = new ArrayList<>();
+            List<String> placeholders = new ArrayList<>();
+            for (int i = 0; i < elements.size(); i++) {
+                String elementName = name + "_" + i;
+                names.add(elementName);
+                placeholders.add("#{" + elementName + "}");
+                expandedValues.put(elementName, elements.get(i));
+            }
+
+            String joined = String.join(", ", placeholders);
+            String segment = shouldWrapWithParentheses() ? "(" + joined + ")" : joined;
+            return new RenderOutput(segment,
+                    names,
+                    true,
+                    expandedValues);
+        }
+
+        private boolean shouldWrapWithParentheses() {
+            return true;
+        }
+
+        private boolean isCollectionLike(Object value) {
+            if (value == null) {
+                return false;
+            }
+            if (value instanceof Collection<?>) {
+                return true;
+            }
+            return value.getClass().isArray() && !(value instanceof byte[]) && !(value instanceof char[]);
+        }
+
+        private List<Object> toElementList(Object value) {
+            if (value instanceof Collection<?>) {
+                return new ArrayList<>((Collection<?>) value);
+            }
+            if (value != null && value.getClass().isArray()) {
+                int length = Array.getLength(value);
+                List<Object> list = new ArrayList<>(length);
+                for (int i = 0; i < length; i++) {
+                    list.add(Array.get(value, i));
+                }
+                return list;
+            }
+            return Collections.emptyList();
         }
     }
 
@@ -133,7 +204,10 @@ public class SBSqlParser {
             if (!content.dynamic && ("WHERE 1=1".equals(normalized) || "WHERE 1 = 1".equals(normalized))) {
                 return RenderOutput.EMPTY;
             }
-            return new RenderOutput(content.sql, content.parameterNames, content.dynamic);
+            return new RenderOutput(content.sql,
+                    content.parameterNames,
+                    content.dynamic,
+                    content.parameterValues);
         }
     }
 
@@ -153,7 +227,10 @@ public class SBSqlParser {
                 return RenderOutput.EMPTY;
             }
             RenderOutput content = renderChildren(children, parameters);
-            return new RenderOutput(content.sql, content.parameterNames, true);
+            return new RenderOutput(content.sql,
+                    content.parameterNames,
+                    true,
+                    content.parameterValues);
         }
     }
 
@@ -161,6 +238,7 @@ public class SBSqlParser {
         private final Map<String, Object> parameters;
         private final StringBuilder sql = new StringBuilder();
         private final List<String> parameterNames = new ArrayList<>();
+        private final Map<String, Object> parameterValues = new LinkedHashMap<>();
 
         private Renderer(Map<String, Object> parameters) {
             this.parameters = parameters;
@@ -174,6 +252,9 @@ public class SBSqlParser {
             if (!output.parameterNames.isEmpty()) {
                 parameterNames.addAll(output.parameterNames);
             }
+            if (!output.parameterValues.isEmpty()) {
+                parameterValues.putAll(output.parameterValues);
+            }
         }
 
         private String getSql() {
@@ -182,6 +263,10 @@ public class SBSqlParser {
 
         private List<String> getParameterNames() {
             return parameterNames;
+        }
+
+        private Map<String, Object> getParameterValues() {
+            return parameterValues;
         }
     }
 
@@ -192,6 +277,7 @@ public class SBSqlParser {
         StringBuilder buffer = new StringBuilder();
         List<String> names = new ArrayList<>();
         boolean dynamic = false;
+        Map<String, Object> values = new LinkedHashMap<>();
         for (Node child : children) {
             RenderOutput output = child.render(parameters);
             if (!output.sql.isEmpty()) {
@@ -203,11 +289,17 @@ public class SBSqlParser {
             if (output.dynamic) {
                 dynamic = true;
             }
+            if (!output.parameterValues.isEmpty()) {
+                values.putAll(output.parameterValues);
+            }
         }
         if (buffer.length() == 0) {
             return RenderOutput.EMPTY;
         }
-        return new RenderOutput(buffer.toString(), names.isEmpty() ? Collections.emptyList() : names, dynamic);
+        return new RenderOutput(buffer.toString(),
+                names.isEmpty() ? Collections.emptyList() : names,
+                dynamic,
+                values.isEmpty() ? Collections.emptyMap() : values);
     }
 
     private static final class Parser {

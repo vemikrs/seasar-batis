@@ -68,6 +68,8 @@ tasks.named<Test>("test").configure {
         if (!prop.isNullOrBlank()) {
             val tags = prop.split(',').map { it.trim() }.filter { it.isNotEmpty() }
             if (tags.isNotEmpty()) includeTags(*tags.toTypedArray())
+        } else {
+            excludeTags("integration")
         }
     }
     maxParallelForks = 1
