@@ -3,14 +3,19 @@
  */
 package jp.vemi.seasarbatis.core.sql.processor;
 
+import java.lang.reflect.Array;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
-import java.util.Stack;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.Objects;
 
 import jp.vemi.seasarbatis.core.sql.ParsedSql;
 import jp.vemi.seasarbatis.exception.SBSqlParseException;
@@ -32,8 +37,6 @@ import jp.vemi.seasarbatis.exception.SBSqlParseException;
  * @since 2025/01/01
  */
 public class SBSqlParser {
-    private static final Logger logger = LoggerFactory.getLogger(SBSqlParser.class);
-
     /**
      * SQLを解析し、実行可能な形式に変換します。
      * 
@@ -51,275 +54,775 @@ public class SBSqlParser {
      * @return 変換されたSQLとパラメータ情報を含むParsedSqlオブジェクト
      */
     public static ParsedSql parse(String sql, Map<String, Object> parameters) {
-        // IF条件の評価
-        String processedSql = processIfConditions(sql, parameters);
-        // バインド変数の解決（MyBatis形式への置換）
-        return processBindVariables(processedSql, parameters);
+        Parser parser = new Parser(sql);
+        List<Node> nodes = parser.parseNodes(false);
+        Renderer renderer = new Renderer(parameters);
+        for (Node node : nodes) {
+            renderer.render(node);
+        }
+        return ParsedSql.builder()
+                .sql(renderer.getSql())
+                .parameterNames(renderer.getParameterNames())
+                .parameterValues(renderer.getParameterValues())
+                .build();
     }
 
-    /**
-     * バインド変数コメントを解決します。
-     * 
-     * @param sql SQLクエリ文字列
-     * @param parameters バインドパラメータ
-     * @return 変換されたSQLとパラメータ情報を含むParsedSqlオブジェクト
-     */
-    protected static ParsedSql processBindVariables(String sql, Map<String, Object> parameters) {
-        if (!sql.contains("/*")) {
-            return ParsedSql.builder().sql(sql).build();
+    private interface Node {
+        RenderOutput render(Map<String, Object> parameters);
+    }
+
+    private static final class RenderOutput {
+        private static final RenderOutput EMPTY = new RenderOutput("", Collections.emptyList(), false,
+                Collections.emptyMap());
+
+        private final String sql;
+        private final List<String> parameterNames;
+        private final boolean dynamic;
+        private final Map<String, Object> parameterValues;
+
+        private RenderOutput(String sql, List<String> parameterNames, boolean dynamic,
+                Map<String, Object> parameterValues) {
+            this.sql = sql;
+            this.parameterNames = parameterNames;
+            this.dynamic = dynamic;
+            this.parameterValues = parameterValues;
+        }
+    }
+
+    private static final class TextNode implements Node {
+        private final String text;
+
+        private TextNode(String text) {
+            this.text = text;
         }
 
-        StringBuilder processedSql = new StringBuilder();
-        List<String> paramNames = new ArrayList<>();
+        @Override
+        public RenderOutput render(Map<String, Object> parameters) {
+            return new RenderOutput(text, Collections.emptyList(), false, Collections.emptyMap());
+        }
+    }
 
-        int position = 0;
+    private static final class PlaceholderNode implements Node {
+        private final String name;
+        private final String defaultLiteral;
 
-        while (true) {
-            int commentStart = sql.indexOf("/*", position);
-            if (commentStart < 0) {
-                if (position < sql.length()) {
-                    processedSql.append(sql.substring(position));
+        private PlaceholderNode(String name, String defaultLiteral) {
+            this.name = name;
+            this.defaultLiteral = defaultLiteral == null ? "" : defaultLiteral;
+        }
+
+        @Override
+        public RenderOutput render(Map<String, Object> parameters) {
+            boolean hasParam = parameters != null && parameters.containsKey(name);
+            if (hasParam) {
+                Map<String, Object> safeParameters = Objects.requireNonNull(parameters);
+                Object value = safeParameters.get(name);
+                if (isCollectionLike(value)) {
+                    return renderCollectionValues(value);
                 }
-                break;
+                Map<String, Object> values = new LinkedHashMap<>();
+                values.put(name, value);
+                return new RenderOutput("#{" + name + "}", Collections.singletonList(name), true, values);
+            }
+            if (!defaultLiteral.isEmpty()) {
+                return new RenderOutput(defaultLiteral, Collections.emptyList(), false, Collections.emptyMap());
+            }
+            return RenderOutput.EMPTY;
+        }
+
+        private RenderOutput renderCollectionValues(Object value) {
+            List<Object> elements = toElementList(value);
+            if (elements.isEmpty()) {
+                if (!defaultLiteral.isEmpty()) {
+                    return new RenderOutput(defaultLiteral, Collections.emptyList(), false, Collections.emptyMap());
+                }
+                return RenderOutput.EMPTY;
             }
 
-            String beforeComment = sql.substring(position, commentStart);
-
-            if (!beforeComment.trim().isEmpty()) {
-                processedSql.append(beforeComment);
+            Map<String, Object> expandedValues = new LinkedHashMap<>();
+            List<String> names = new ArrayList<>();
+            List<String> placeholders = new ArrayList<>();
+            for (int i = 0; i < elements.size(); i++) {
+                String elementName = name + "_" + i;
+                names.add(elementName);
+                placeholders.add("#{" + elementName + "}");
+                expandedValues.put(elementName, elements.get(i));
             }
 
-            int commentEnd = sql.indexOf("*/", commentStart + 2);
-            if (commentEnd < 0) {
-                throw new SBSqlParseException("SQLコメントが正しく閉じられていません: " + sql);
-            }
+            String joined = String.join(", ", placeholders);
+            String segment = shouldWrapWithParentheses() ? "(" + joined + ")" : joined;
+            return new RenderOutput(segment,
+                    names,
+                    true,
+                    expandedValues);
+        }
 
-            String paramName = sql.substring(commentStart + 2, commentEnd).trim();
-            if (paramName.isEmpty()) {
+        private boolean shouldWrapWithParentheses() {
+            return true;
+        }
+
+        private boolean isCollectionLike(Object value) {
+            if (value == null) {
+                return false;
+            }
+            if (value instanceof Collection<?>) {
+                return true;
+            }
+            return value.getClass().isArray() && !(value instanceof byte[]) && !(value instanceof char[]);
+        }
+
+        private List<Object> toElementList(Object value) {
+            if (value instanceof Collection<?>) {
+                return new ArrayList<>((Collection<?>) value);
+            }
+            if (value != null && value.getClass().isArray()) {
+                int length = Array.getLength(value);
+                List<Object> list = new ArrayList<>(length);
+                for (int i = 0; i < length; i++) {
+                    list.add(Array.get(value, i));
+                }
+                return list;
+            }
+            return Collections.emptyList();
+        }
+    }
+
+    private static final class BeginNode implements Node {
+        private final List<Node> children;
+
+        private BeginNode(List<Node> children) {
+            this.children = children;
+        }
+
+        @Override
+        public RenderOutput render(Map<String, Object> parameters) {
+            RenderOutput content = renderChildren(children, parameters);
+            if (content.sql.isBlank()) {
+                return RenderOutput.EMPTY;
+            }
+            String normalized = content.sql.trim().replaceAll("\\s+", " ").toUpperCase(Locale.ROOT);
+            if (!content.dynamic && ("WHERE 1=1".equals(normalized) || "WHERE 1 = 1".equals(normalized))) {
+                return RenderOutput.EMPTY;
+            }
+            return new RenderOutput(content.sql,
+                    content.parameterNames,
+                    content.dynamic,
+                    content.parameterValues);
+        }
+    }
+
+    private static final class IfNode implements Node {
+        private final String condition;
+        private final List<Node> children;
+
+        private IfNode(String condition, List<Node> children) {
+            this.condition = condition;
+            this.children = children;
+        }
+
+        @Override
+        public RenderOutput render(Map<String, Object> parameters) {
+            boolean result = ConditionEvaluator.evaluate(condition, parameters);
+            if (!result) {
+                return RenderOutput.EMPTY;
+            }
+            RenderOutput content = renderChildren(children, parameters);
+            return new RenderOutput(content.sql,
+                    content.parameterNames,
+                    true,
+                    content.parameterValues);
+        }
+    }
+
+    private static final class Renderer {
+        private final Map<String, Object> parameters;
+        private final StringBuilder sql = new StringBuilder();
+        private final List<String> parameterNames = new ArrayList<>();
+        private final Map<String, Object> parameterValues = new LinkedHashMap<>();
+
+        private Renderer(Map<String, Object> parameters) {
+            this.parameters = parameters;
+        }
+
+        private void render(Node node) {
+            RenderOutput output = node.render(parameters);
+            if (!output.sql.isEmpty()) {
+                sql.append(output.sql);
+            }
+            if (!output.parameterNames.isEmpty()) {
+                parameterNames.addAll(output.parameterNames);
+            }
+            if (!output.parameterValues.isEmpty()) {
+                parameterValues.putAll(output.parameterValues);
+            }
+        }
+
+        private String getSql() {
+            return sql.toString();
+        }
+
+        private List<String> getParameterNames() {
+            return parameterNames;
+        }
+
+        private Map<String, Object> getParameterValues() {
+            return parameterValues;
+        }
+    }
+
+    private static RenderOutput renderChildren(List<Node> children, Map<String, Object> parameters) {
+        if (children == null || children.isEmpty()) {
+            return RenderOutput.EMPTY;
+        }
+        StringBuilder buffer = new StringBuilder();
+        List<String> names = new ArrayList<>();
+        boolean dynamic = false;
+        Map<String, Object> values = new LinkedHashMap<>();
+        for (Node child : children) {
+            RenderOutput output = child.render(parameters);
+            if (!output.sql.isEmpty()) {
+                buffer.append(output.sql);
+            }
+            if (!output.parameterNames.isEmpty()) {
+                names.addAll(output.parameterNames);
+            }
+            if (output.dynamic) {
+                dynamic = true;
+            }
+            if (!output.parameterValues.isEmpty()) {
+                values.putAll(output.parameterValues);
+            }
+        }
+        if (buffer.length() == 0) {
+            return RenderOutput.EMPTY;
+        }
+        return new RenderOutput(buffer.toString(),
+                names.isEmpty() ? Collections.emptyList() : names,
+                dynamic,
+                values.isEmpty() ? Collections.emptyMap() : values);
+    }
+
+    private static final class Parser {
+        private final String sql;
+        private int index;
+
+        private Parser(String sql) {
+            this.sql = sql;
+        }
+
+        private List<Node> parseNodes(boolean inBlock) {
+            List<Node> nodes = new ArrayList<>();
+            StringBuilder textBuffer = new StringBuilder();
+            while (index < sql.length()) {
+                if (peek("/*")) {
+                    flushText(nodes, textBuffer);
+                    int commentEnd = sql.indexOf("*/", index + 2);
+                    if (commentEnd < 0) {
+                        throw new SBSqlParseException("SQLコメントが正しく閉じられていません");
+                    }
+                    String body = sql.substring(index + 2, commentEnd).trim();
+                    index = commentEnd + 2;
+                    String upperBody = body.toUpperCase(Locale.ROOT);
+                    if ("BEGIN".equals(upperBody)) {
+                        List<Node> children = parseNodes(true);
+                        nodes.add(new BeginNode(children));
+                    } else if ("END".equals(upperBody)) {
+                        if (!inBlock) {
+                            throw new SBSqlParseException("対応するBEGIN/IFが存在しません: " + sql);
+                        }
+                        return nodes;
+                    } else if (upperBody.startsWith("IF ")) {
+                        String condition = body.substring(2).trim();
+                        List<Node> children = parseNodes(true);
+                        nodes.add(new IfNode(condition, children));
+                    } else {
+                        nodes.add(parsePlaceholderNode(body));
+                    }
+                } else {
+                    textBuffer.append(sql.charAt(index));
+                    index++;
+                }
+            }
+            if (inBlock) {
+                throw new SBSqlParseException("/*END*/ が不足しています: " + sql);
+            }
+            flushText(nodes, textBuffer);
+            return nodes;
+        }
+
+        private void flushText(List<Node> nodes, StringBuilder textBuffer) {
+            if (textBuffer.length() > 0) {
+                nodes.add(new TextNode(textBuffer.toString()));
+                textBuffer.setLength(0);
+            }
+        }
+
+        private boolean peek(String value) {
+            return sql.startsWith(value, index);
+        }
+
+        private Node parsePlaceholderNode(String body) {
+            if (body.isEmpty()) {
                 throw new SBSqlParseException("空のSQLコメントが存在します: " + sql);
             }
-            paramNames.add(paramName);
-
-            if (parameters.containsKey(paramName)) {
-                processedSql.append("#{").append(paramName).append("} ");
-            }
-
-            position = skipTypeDummyValue(sql, commentEnd + 2);
+            String name = body.trim();
+            String defaultLiteral = captureDefaultLiteral();
+            return new PlaceholderNode(name, defaultLiteral);
         }
 
-        String finalSql = processedSql.toString().replaceAll("\\s{2,}", " ").trim();
-        return ParsedSql.builder().sql(finalSql).parameterNames(paramNames).build();
+        private String captureDefaultLiteral() {
+            int start = index;
+            if (start >= sql.length()) {
+                return "";
+            }
+
+            char first = sql.charAt(start);
+            if (Character.isWhitespace(first)) {
+                return "";
+            }
+
+            int end = start;
+            if (first == '\'') {
+                end = parseStringLiteral(start);
+            } else if (first == '(') {
+                end = parseParentheses(start);
+            } else {
+                while (end < sql.length()) {
+                    char c = sql.charAt(end);
+                    if (Character.isWhitespace(c) || c == ',' || c == ')' || c == ';') {
+                        break;
+                    }
+                    end++;
+                }
+            }
+
+            String literal = sql.substring(start, end);
+            index = end;
+            return literal;
+        }
+
+        private int parseStringLiteral(int start) {
+            int pos = start + 1;
+            while (pos < sql.length()) {
+                char c = sql.charAt(pos);
+                if (c == '\'') {
+                    if (pos + 1 < sql.length() && sql.charAt(pos + 1) == '\'') {
+                        pos += 2;
+                        continue;
+                    }
+                    return pos + 1;
+                }
+                pos++;
+            }
+            return sql.length();
+        }
+
+        private int parseParentheses(int start) {
+            int depth = 1;
+            int pos = start + 1;
+            while (pos < sql.length() && depth > 0) {
+                char c = sql.charAt(pos);
+                if (c == '(') {
+                    depth++;
+                } else if (c == ')') {
+                    depth--;
+                }
+                pos++;
+            }
+            return pos;
+        }
     }
 
-    /**
-     * 型推論用のダミー値をスキップします。
-     * 
-     * <p>
-     * S2JDBCの仕様に従い、以下の処理を行います：
-     * <ul>
-     * <li>シングルクォートで囲まれた値は型推論用のダミー値として扱い、スキップします</li>
-     * <li>数値やnullなどの直値もダミー値として扱い、スキップします</li>
-     * <li>ダミー値が存在しない場合はエラーとしません</li>
-     * </ul>
-     * </p>
-     *
-     * @param sql SQLクエリ文字列
-     * @param start 検索開始位置
-     * @return スキップ後の位置
-     */
-    private static int skipTypeDummyValue(String sql, int start) {
-        int i = start;
-        if (i >= sql.length()) {
-            return i;
+    private static final class ConditionEvaluator {
+        private final String expression;
+        private final Map<String, Object> parameters;
+        private int index;
+
+        private ConditionEvaluator(String expression, Map<String, Object> parameters) {
+            this.expression = expression;
+            this.parameters = parameters;
         }
 
-        char c = sql.charAt(i);
-
-        // シングルクォートで囲まれた値のスキップ
-        if (c == '\'') {
-            i++;
-            while (i < sql.length()) {
-                if (sql.charAt(i) == '\'') {
-                    return i + 1;
-                }
-                i++;
+        private static boolean evaluate(String expression, Map<String, Object> parameters) {
+            if (expression == null || expression.trim().isEmpty()) {
+                throw new SBSqlParseException("空の条件式が指定されました");
             }
-        } else {
-            // 空白、コンマ、括弧、セミコロン、シングルクォート以外の文字をスキップ
-            while (i < sql.length()) {
-                c = sql.charAt(i);
-                if (Character.isWhitespace(c) || c == ',' || c == ')' || c == '(' || c == ';' || c == '\'') {
+            ConditionEvaluator evaluator = new ConditionEvaluator(expression, parameters);
+            boolean result = evaluator.parseOr();
+            evaluator.skipWhitespace();
+            if (!evaluator.isEnd()) {
+                String remaining = evaluator.expression.substring(evaluator.index).trim();
+                if (!remaining.isEmpty()) {
+                    throw new SBSqlParseException(
+                            "条件式の解析に失敗しました: " + expression + " (未処理: " + remaining + ")");
+                }
+                throw new SBSqlParseException("条件式の解析に失敗しました: " + expression);
+            }
+            return result;
+        }
+
+        private boolean parseOr() {
+            boolean value = parseAnd();
+            while (true) {
+                skipWhitespace();
+                if (matchKeyword("OR")) {
+                    boolean right = parseAnd();
+                    value = value || right;
+                } else {
                     break;
                 }
-                i++;
             }
+            return value;
         }
-        return i;
-    }
 
-    /**
-     * IF条件を評価します。
-     * <p>
-     * ネストされた条件とBEGIN/ENDブロックをサポートします。
-     * </p>
-     *
-     * @param sql SQLクエリ文字列
-     * @param parameters バインドパラメータ
-     * @return IF条件の評価結果を反映したSQL文字列
-     */
-    protected static String processIfConditions(String sql, Map<String, Object> parameters) {
-        StringBuilder result = new StringBuilder();
-        String[] lines = sql.split("\n");
-        Stack<Boolean> ifStack = new Stack<>();
-        Stack<Boolean> beginStack = new Stack<>();
-        beginStack.push(true);
-
-        String pendingLine = null;
-        boolean isInIf = false;
-
-        for (String line : lines) {
-            line = line.trim();
-            logger.trace("Processing line: {}", line);
-
-            if (line.contains("/*BEGIN*/")) {
-                beginStack.push(true);
-                continue;
-            }
-
-            if (line.contains("/*END*/")) {
-                if (isInIf) {
-                    if (!ifStack.isEmpty() && ifStack.peek() && pendingLine != null) {
-                        result.append(pendingLine).append("\n");
-                    }
-                    ifStack.pop();
-                    isInIf = false;
-                    pendingLine = null;
-                } else if (!beginStack.isEmpty()) {
-                    beginStack.pop();
+        private boolean parseAnd() {
+            boolean value = parsePrimary();
+            while (true) {
+                skipWhitespace();
+                if (matchKeyword("AND")) {
+                    boolean right = parsePrimary();
+                    value = value && right;
+                } else {
+                    break;
                 }
-                continue;
+            }
+            return value;
+        }
+
+        private boolean parsePrimary() {
+            skipWhitespace();
+            if (match('(')) {
+                boolean value = parseOr();
+                skipWhitespace();
+                if (!match(')')) {
+                    throw new SBSqlParseException("括弧が閉じられていません: " + expression);
+                }
+                return value;
+            }
+            return parseComparison();
+        }
+
+        private boolean parseComparison() {
+            String leftIdentifier = parseIdentifier();
+            if (leftIdentifier == null || leftIdentifier.isEmpty()) {
+                throw new SBSqlParseException("条件式の左辺が不正です: " + expression);
             }
 
-            if (line.contains("/*IF")) {
-                String condition = extractCondition(line);
-                boolean conditionResult = evaluateCondition(condition, parameters);
-                logger.trace("Condition: {} => {}", condition, conditionResult);
-                ifStack.push(conditionResult);
-                isInIf = true;
-                continue;
+            skipWhitespace();
+            if (matchKeyword("IS")) {
+                boolean not = matchKeyword("NOT");
+                if (!matchKeyword("NULL")) {
+                    throw new SBSqlParseException("NULL 判定の構文が不正です: " + expression);
+                }
+                Object value = getParameter(leftIdentifier);
+                return not ? value != null : value == null;
             }
 
-            if (isInIf) {
-                pendingLine = line;
-            } else if (!ifStack.contains(false)) {
-                result.append(line).append("\n");
+            String operator = parseOperator();
+            if (operator == null) {
+                throw new SBSqlParseException("演算子が見つかりません: " + expression);
+            }
+            skipWhitespace();
+            ConditionValue rightValue = parseValue();
+            Object leftValue = getParameter(leftIdentifier);
+
+            switch (operator) {
+            case "==":
+            case "=":
+                return equalsFlexible(leftValue, rightValue.value);
+            case "!=":
+                return !equalsFlexible(leftValue, rightValue.value);
+            case ">":
+                return compareFlexible(leftValue, rightValue.value) > 0;
+            case "<":
+                return compareFlexible(leftValue, rightValue.value) < 0;
+            case ">=":
+                return compareFlexible(leftValue, rightValue.value) >= 0;
+            case "<=":
+                return compareFlexible(leftValue, rightValue.value) <= 0;
+            default:
+                throw new SBSqlParseException("未サポートの演算子です: " + operator);
             }
         }
 
-        return result.toString();
-    }
-
-    /**
-     * 条件式を抽出します。
-     *
-     * @param line 条件式を含む行
-     * @return 抽出された条件式
-     */
-    protected static String extractCondition(String line) {
-        int start = line.indexOf("/*IF") + 4;
-        int end = line.indexOf("*/", start);
-        return line.substring(start, end).trim();
-    }
-
-    /**
-     * 条件式を評価します。
-     * <p>
-     * AND/OR演算子をサポートします。
-     * </p>
-     *
-     * @param condition 条件式文字列
-     * @param parameters バインドパラメータ
-     * @return 条件式の評価結果
-     */
-    protected static boolean evaluateCondition(String condition, Map<String, Object> parameters) {
-        if (condition == null || condition.trim().isEmpty()) {
-            throw new SBSqlParseException("空の条件式が指定されました");
+        private Object getParameter(String name) {
+            if (parameters == null) {
+                return null;
+            }
+            if (parameters.containsKey(name)) {
+                return parameters.get(name);
+            }
+            return null;
         }
 
-        if (condition.contains(" AND ")) {
-            String[] conditions = condition.split(" AND ");
-            return Arrays.stream(conditions).map(String::trim).filter(c -> !c.isEmpty())
-                    .allMatch(c -> evaluateSingleCondition(c, parameters));
-        }
-        if (condition.contains(" OR ")) {
-            String[] conditions = condition.split(" OR ");
-            return Arrays.stream(conditions).map(String::trim).filter(c -> !c.isEmpty())
-                    .anyMatch(c -> evaluateSingleCondition(c, parameters));
-        }
-        return evaluateSingleCondition(condition, parameters);
-    }
-
-    /**
-     * SQL文を整形します。
-     * <p>
-     * 不要なコメントの削除、連続する空白の除去などを行います。
-     * </p>
-     *
-     * @param sql 整形対象のSQL文
-     * @return 整形されたSQL文
-     */
-    protected static String cleanupSql(String sql) {
-        return sql.replaceAll("/\\*BEGIN\\*/", "") // BEGINコメントの削除
-                .replaceAll("/\\*END\\*/", "") // ENDコメントの削除
-                .replaceAll("\\s+", " ") // 連続する空白の削除
-                .trim();
-    }
-
-    private static boolean evaluateSingleCondition(String condition, Map<String, Object> parameters) {
-        String[] parts = condition.split("\\s+");
-        if (parts.length < 2) {
-            throw new SBSqlParseException("不正な条件式フォーマットです: " + condition);
+        private String parseIdentifier() {
+            skipWhitespace();
+            int start = index;
+            while (index < expression.length()) {
+                char c = expression.charAt(index);
+                if (Character.isLetterOrDigit(c) || c == '_' || c == '.' || c == '-') {
+                    index++;
+                } else {
+                    break;
+                }
+            }
+            if (start == index) {
+                return null;
+            }
+            return expression.substring(start, index);
         }
 
-        String paramName = parts[0];
-        if (!parameters.containsKey(paramName)) {
-            throw new SBSqlParseException("パラメータが見つかりません: " + paramName);
+        private String parseOperator() {
+            skipWhitespace();
+            if (matchString("==")) {
+                return "==";
+            }
+            if (matchString("!=")) {
+                return "!=";
+            }
+            if (matchString(">=")) {
+                return ">=";
+            }
+            if (matchString("<=")) {
+                return "<=";
+            }
+            if (matchString(">")) {
+                return ">";
+            }
+            if (matchString("<")) {
+                return "<";
+            }
+            if (matchString("=")) {
+                return "=";
+            }
+            return null;
         }
 
-        String operator = parts.length > 2 ? parts[1] : parts[1].equals("null") ? "null" : "!null";
-        String value = parts.length > 2 ? parts[2] : null;
+        private ConditionValue parseValue() {
+            skipWhitespace();
+            if (isEnd()) {
+                throw new SBSqlParseException("右辺の値が不足しています: " + expression);
+            }
+            char c = expression.charAt(index);
+            if (c == '\'') {
+                String literal = parseQuotedString();
+                return new ConditionValue(literal);
+            }
+            if (Character.isDigit(c) || c == '-' || c == '+') {
+                String number = parseNumber();
+                return new ConditionValue(parseNumberValue(number));
+            }
+            String word = parseIdentifier();
+            if (word == null) {
+                throw new SBSqlParseException("右辺の値を解析できません: " + expression);
+            }
+            String lower = word.toLowerCase(Locale.ROOT);
+            switch (lower) {
+            case "null":
+                return new ConditionValue(null);
+            case "true":
+                return new ConditionValue(Boolean.TRUE);
+            case "false":
+                return new ConditionValue(Boolean.FALSE);
+            default:
+                Object value = parameters != null && parameters.containsKey(word) ? parameters.get(word) : word;
+                return new ConditionValue(value);
+            }
+        }
 
-        Object paramValue = parameters.get(paramName);
+        private String parseQuotedString() {
+            int start = index + 1;
+            int pos = start;
+            StringBuilder sb = new StringBuilder();
+            while (pos < expression.length()) {
+                char c = expression.charAt(pos);
+                if (c == '\'') {
+                    if (pos + 1 < expression.length() && expression.charAt(pos + 1) == '\'') {
+                        sb.append('\'');
+                        pos += 2;
+                        continue;
+                    }
+                    index = pos + 1;
+                    return sb.toString();
+                }
+                sb.append(c);
+                pos++;
+            }
+            index = expression.length();
+            return sb.toString();
+        }
 
-        switch (operator) {
-        case "==":
-        case "=":
-            return String.valueOf(paramValue).equals(value);
-        case "!=":
-            return !String.valueOf(paramValue).equals(value);
-        case ">":
-            return compareValues(paramValue, value) > 0;
-        case "<":
-            return compareValues(paramValue, value) < 0;
-        case ">=":
-            return compareValues(paramValue, value) >= 0;
-        case "<=":
-            return compareValues(paramValue, value) <= 0;
-        case "null":
-            return paramValue == null;
-        case "!null":
-            return paramValue != null;
-        default:
+        private String parseNumber() {
+            int start = index;
+            while (index < expression.length()) {
+                char c = expression.charAt(index);
+                if (Character.isDigit(c) || c == '.' || c == '-' || c == '+') {
+                    index++;
+                } else {
+                    break;
+                }
+            }
+            return expression.substring(start, index);
+        }
+
+        private Object parseNumberValue(String literal) {
+            try {
+                if (literal.contains(".")) {
+                    return Double.parseDouble(literal);
+                }
+                return Long.parseLong(literal);
+            } catch (NumberFormatException e) {
+                return literal;
+            }
+        }
+
+        private void skipWhitespace() {
+            while (index < expression.length()) {
+                char c = expression.charAt(index);
+                if (Character.isWhitespace(c)) {
+                    index++;
+                } else {
+                    break;
+                }
+            }
+        }
+
+        private boolean matchKeyword(String keyword) {
+            skipWhitespace();
+            int len = keyword.length();
+            if (expression.regionMatches(true, index, keyword, 0, len)) {
+                int end = index + len;
+                if (end == expression.length() || !Character.isLetterOrDigit(expression.charAt(end))) {
+                    index = end;
+                    return true;
+                }
+            }
             return false;
         }
+
+        private boolean match(char c) {
+            if (index < expression.length() && expression.charAt(index) == c) {
+                index++;
+                return true;
+            }
+            return false;
+        }
+
+        private boolean matchString(String token) {
+            if (expression.startsWith(token, index)) {
+                index += token.length();
+                return true;
+            }
+            return false;
+        }
+
+        private boolean isEnd() {
+            return index >= expression.length();
+        }
     }
 
-    private static int compareValues(Object value1, String value2) {
-        if (value1 instanceof Number && value2.matches("-?\\d+(\\.\\d+)?")) {
-            double d1 = ((Number) value1).doubleValue();
-            double d2 = Double.parseDouble(value2);
-            return Double.compare(d1, d2);
+    private static final class ConditionValue {
+        private final Object value;
+
+        private ConditionValue(Object value) {
+            this.value = value;
         }
-        return String.valueOf(value1).compareTo(value2);
+    }
+
+    private static boolean equalsFlexible(Object left, Object right) {
+        if (left == null || right == null) {
+            return left == right;
+        }
+        if (isNumeric(left) && isNumeric(right)) {
+            return Double.compare(asDouble(left), asDouble(right)) == 0;
+        }
+        if (left instanceof Boolean || right instanceof Boolean) {
+            return Objects.equals(asBoolean(left), asBoolean(right));
+        }
+        if (left instanceof LocalDate && right instanceof String) {
+            LocalDate parsed = parseLocalDate((String) right);
+            return Objects.equals(left, parsed);
+        }
+        if (left instanceof LocalDateTime && right instanceof String) {
+            LocalDateTime parsed = parseLocalDateTime((String) right);
+            return Objects.equals(left, parsed);
+        }
+        return Objects.equals(String.valueOf(left), String.valueOf(right));
+    }
+
+    private static int compareFlexible(Object left, Object right) {
+        if (left == null || right == null) {
+            return 0;
+        }
+        if (isNumeric(left) && isNumeric(right)) {
+            return Double.compare(asDouble(left), asDouble(right));
+        }
+        if (left instanceof Comparable && right instanceof Comparable) {
+            try {
+                @SuppressWarnings("unchecked")
+                Comparable<Object> comparableLeft = (Comparable<Object>) left;
+                return comparableLeft.compareTo(right);
+            } catch (ClassCastException ignore) {
+                // fallthrough to string comparison
+            }
+        }
+        return String.valueOf(left).compareTo(String.valueOf(right));
+    }
+
+    private static boolean isNumeric(Object value) {
+        if (value instanceof Number) {
+            return true;
+        }
+        if (value instanceof String) {
+            String str = ((String) value).trim();
+            if (str.isEmpty()) {
+                return false;
+            }
+            try {
+                new BigDecimal(str);
+                return true;
+            } catch (NumberFormatException e) {
+                return false;
+            }
+        }
+        return false;
+    }
+
+    private static double asDouble(Object value) {
+        if (value instanceof Number) {
+            return ((Number) value).doubleValue();
+        }
+        return Double.parseDouble(String.valueOf(value).trim());
+    }
+
+    private static Boolean asBoolean(Object value) {
+        if (value instanceof Boolean) {
+            return (Boolean) value;
+        }
+        if (value instanceof String) {
+            return Boolean.parseBoolean(((String) value).trim());
+        }
+        return null;
+    }
+
+    private static LocalDate parseLocalDate(String value) {
+        try {
+            return LocalDate.parse(value);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static LocalDateTime parseLocalDateTime(String value) {
+        try {
+            return LocalDateTime.parse(value);
+        } catch (Exception e) {
+            try {
+                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+                return LocalDateTime.parse(value, formatter);
+            } catch (Exception ignore) {
+                return null;
+            }
+        }
     }
 }

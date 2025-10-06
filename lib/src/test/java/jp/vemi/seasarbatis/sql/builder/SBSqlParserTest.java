@@ -19,10 +19,27 @@ import jp.vemi.seasarbatis.core.sql.ParsedSql;
 import jp.vemi.seasarbatis.core.sql.loader.SBSqlFileLoader;
 import jp.vemi.seasarbatis.core.sql.processor.SBSqlParser;
 
+/**
+ * SQLパーサーの動作を検証する単体テストクラスです。
+ * <p>
+ * English: Provides regression tests that document the supported S2JDBC-style directives
+ * handled by {@link SBSqlParser}, covering nested IF/BEGIN blocks, default literal fallbacks,
+ * complex boolean expressions, and safe placeholder substitution rules.
+ * </p>
+ *
+ * @author H.Kurosawa
+ * @version 0.0.1
+ * @since 2025/01/01
+ */
 class SBSqlParserTest {
 
     @Test
     @Tag("smoke")
+    /**
+     * SQLファイルの読み込みが成功することを検証します。
+     *
+     * @throws IOException リソース読み込みに失敗した場合
+     */
     void testFileLoading() throws IOException {
         String sql = SBSqlFileLoader.load("test-query.sql");
         assertNotNull(sql);
@@ -31,6 +48,9 @@ class SBSqlParserTest {
     }
 
     @Test
+    /**
+     * 数値条件のダイナミック置換が行われることを検証します。
+     */
     void testNumericConditions() {
         Map<String, Object> params = new HashMap<>();
         params.put("amount", 10000.00);
@@ -59,6 +79,9 @@ class SBSqlParserTest {
     }
 
     @Test
+    /**
+     * ENUM や SET 相当の条件が正しく置換されることを検証します。
+     */
     void testEnumAndSetConditions() {
         Map<String, Object> params = new HashMap<>();
         params.put("status", "ACTIVE");
@@ -78,6 +101,9 @@ class SBSqlParserTest {
     }
 
     @Test
+    /**
+     * 日付や日時条件の変換が行われることを検証します。
+     */
     void testDateTimeConditions() {
         Map<String, Object> params = new HashMap<>();
         params.put("birthDate", Date.valueOf("1990-01-01"));
@@ -106,6 +132,9 @@ class SBSqlParserTest {
     }
 
     @Test
+    /**
+     * BEGIN/END ブロックと単純条件の評価結果を検証します。
+     */
     void testConditionsWithBeginEnd() {
         Map<String, Object> params = new HashMap<>();
         params.put("id", 1001);
@@ -133,6 +162,9 @@ class SBSqlParserTest {
     }
 
     @Test
+    /**
+     * null 判定条件の展開を検証します。
+     */
     void testNullConditions() {
         Map<String, Object> params = new HashMap<>();
         params.put("name", null);
@@ -158,6 +190,9 @@ class SBSqlParserTest {
     }
 
     @Test
+    /**
+     * 存在しない SQL ファイル読み込み時に例外が発生することを検証します。
+     */
     void testInvalidSQLFile() {
         assertThrows(IOException.class, () -> {
             SBSqlFileLoader.load("non-existent.sql");
@@ -165,6 +200,9 @@ class SBSqlParserTest {
     }
 
     @Test
+    /**
+     * 拡張的なバインド置換ロジックを検証します。
+     */
     void testAdvancedBindings() {
         Map<String, Object> params = new HashMap<>();
         params.put("ids", Arrays.asList(1, 2, 3));
@@ -193,16 +231,126 @@ class SBSqlParserTest {
 
         ParsedSql parsedSql = SBSqlParser.parse(sql, params);
         String result = parsedSql.getSql();
-        System.out.println(result);
-        assertTrue(result.contains("id IN #{ids}"));
+        assertTrue(result.contains("id IN (#{ids_0}, #{ids_1}, #{ids_2})"));
         assertTrue(result.contains("name LIKE #{namePattern}"));
         assertTrue(result.contains("amount > #{minAmount}"));
         assertTrue(result.contains("status IS #{nullableStatus}"));
         assertFalse(result.contains("/*"));
         assertFalse(result.contains("*/"));
+
+        Map<String, Object> expanded = parsedSql.getParameterValues();
+        assertEquals(3, expanded.entrySet().stream().filter(e -> e.getKey().startsWith("ids_")).count());
+        assertEquals(1, expanded.get("ids_0"));
+        assertEquals(2, expanded.get("ids_1"));
+        assertEquals(3, expanded.get("ids_2"));
+        assertTrue(expanded.containsKey("namePattern"));
+        assertTrue(expanded.containsKey("minAmount"));
+        assertTrue(expanded.containsKey("nullableStatus"));
     }
 
     @Test
+    /**
+     * ネストした IF ブロックの評価を検証します。
+     */
+    void testNestedIfBlocks() {
+    Map<String, Object> params = new HashMap<>();
+    params.put("status", "ACTIVE");
+    params.put("role", null);
+    params.put("vip", Boolean.TRUE);
+
+        String sql = """
+                SELECT * FROM users
+                /*BEGIN*/
+                WHERE 1=1
+                /*IF status != null*/
+                AND status = /*status*/'ACTIVE'
+                    /*IF role != null*/
+                    AND role = /*role*/'ADMIN'
+                    /*END*/
+                    /*IF vip == true*/
+                    AND vip_flag = /*vip*/0
+                    /*END*/
+                /*END*/
+                /*END*/
+                ORDER BY id
+                """;
+
+        ParsedSql parsedSql = SBSqlParser.parse(sql, params);
+        String result = parsedSql.getSql();
+
+        assertTrue(result.contains("status = #{status}"), "status 条件が展開されること");
+        assertTrue(result.contains("vip_flag = #{vip}"), "ネストした IF が展開されること");
+        assertFalse(result.contains("role ="), "role 条件は展開されないこと");
+        assertTrue(result.contains("ORDER BY id"));
+    }
+
+    @Test
+    /**
+     * パラメータ未指定時にダミー値へフォールバックする挙動を検証します。
+     */
+    void testPlaceholderFallbackToDefault() {
+        Map<String, Object> params = Map.of();
+
+        String sql = "SELECT * FROM users WHERE type = /*type*/'USER' AND deleted = /*deleted*/0";
+
+        ParsedSql parsedSql = SBSqlParser.parse(sql, params);
+        String result = parsedSql.getSql();
+
+        assertTrue(result.contains("type = 'USER'"), "パラメータ未指定でもデフォルト値が残ること");
+        assertTrue(result.contains("deleted = 0"));
+        assertFalse(result.contains("#{type}"));
+    }
+
+    @Test
+    /**
+     * 複合的な条件式の評価を検証します。
+     */
+    void testComplexConditionEvaluation() {
+        Map<String, Object> params = new HashMap<>();
+        params.put("score", 85);
+        params.put("rank", "A");
+
+        String sql = """
+                SELECT * FROM users
+                /*IF (score >= 80 AND rank == 'A') OR (score >= 90 AND rank == 'B')*/
+                WHERE score >= /*score*/0
+                /*END*/
+                """;
+
+        ParsedSql parsedSql = SBSqlParser.parse(sql, params);
+        String result = parsedSql.getSql();
+
+        assertTrue(result.contains("WHERE score >= #{score}"));
+    }
+
+    @Test
+    /**
+     * 空の BEGIN ブロックが削除されることを検証します。
+     */
+    void testBeginBlockRemovedWhenEmpty() {
+        Map<String, Object> params = Map.of();
+
+        String sql = """
+                SELECT * FROM users
+                /*BEGIN*/
+                WHERE 1=1
+                /*IF id != null*/
+                AND id = /*id*/1
+                /*END*/
+                /*END*/
+                ORDER BY id
+                """;
+
+        ParsedSql parsedSql = SBSqlParser.parse(sql, params);
+        String result = normalizeWhitespace(parsedSql.getSql());
+
+        assertEquals("SELECT * FROM users ORDER BY id", result);
+    }
+
+    @Test
+    /**
+     * ダミー値パターンの置換整合性を検証します。
+     */
     void testDummyValuePatterns() {
         Map<String, Object> params = Map.of("id", 1, "name", "test user", "createAt", "2025-01-01 10:00:00");
 
@@ -227,6 +375,9 @@ class SBSqlParserTest {
     }
 
     @Test
+    /**
+     * SQL インジェクション対策としての安全な置換を検証します。
+     */
     void testSQLInjectionPrevention() {
         Map<String, Object> params = new HashMap<>();
         // SQLインジェクションを試みるパラメータ

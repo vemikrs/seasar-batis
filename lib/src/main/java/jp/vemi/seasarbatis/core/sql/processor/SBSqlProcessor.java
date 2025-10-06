@@ -4,12 +4,15 @@
 package jp.vemi.seasarbatis.core.sql.processor;
 
 import java.io.IOException;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import org.apache.ibatis.session.Configuration;
 
 import jp.vemi.seasarbatis.core.sql.ParsedSql;
 import jp.vemi.seasarbatis.core.sql.ProcessedSql;
+import jp.vemi.seasarbatis.core.sql.dialect.SBDialect;
+import jp.vemi.seasarbatis.core.sql.dialect.PostgresDialect;
 import jp.vemi.seasarbatis.core.sql.loader.SBSqlFileLoader;
 
 /**
@@ -20,19 +23,32 @@ import jp.vemi.seasarbatis.core.sql.loader.SBSqlFileLoader;
  * </p>
  *
  * @author H.Kurosawa
- * @version 1.0.0
+ * @version 0.0.1
  * @since 2025/01/01
  */
 public class SBSqlProcessor {
     private final Configuration configuration;
+    private final SBMyBatisSqlProcessor mybatisSqlProcessor;
+
+    /**
+     * SBSqlProcessorを構築します。
+     * デフォルトでPostgreSQLダイアレクトを使用します。
+     *
+     * @param configuration MyBatisの設定オブジェクト
+     */
+    public SBSqlProcessor(Configuration configuration) {
+        this(configuration, new PostgresDialect());
+    }
 
     /**
      * SBSqlProcessorを構築します。
      *
      * @param configuration MyBatisの設定オブジェクト
+     * @param dialect データベースダイアレクト
      */
-    public SBSqlProcessor(Configuration configuration) {
+    public SBSqlProcessor(Configuration configuration, SBDialect dialect) {
         this.configuration = configuration;
+        this.mybatisSqlProcessor = new SBMyBatisSqlProcessor(dialect);
     }
 
     /**
@@ -45,10 +61,18 @@ public class SBSqlProcessor {
     public ProcessedSql process(String sql, Map<String, Object> parameters) {
         ParsedSql parsedSql = SBSqlParser.parse(sql, parameters);
 
-        String processedSql = SBMyBatisSqlProcessor.process(
+        Map<String, Object> effectiveParameters = new LinkedHashMap<>();
+        if (parameters != null) {
+            effectiveParameters.putAll(parameters);
+        }
+        if (parsedSql.getParameterValues() != null && !parsedSql.getParameterValues().isEmpty()) {
+            effectiveParameters.putAll(parsedSql.getParameterValues());
+        }
+
+        String processedSql = mybatisSqlProcessor.process(
                 parsedSql.getSql(),
                 configuration,
-                parameters);
+                effectiveParameters);
 
         return ProcessedSql.builder()
                 .sql(processedSql)

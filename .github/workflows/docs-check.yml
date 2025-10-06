@@ -33,7 +33,7 @@ jobs:
       - name: Generate Gradle Wrapper
         run: |
           if [ ! -f gradle/wrapper/gradle-wrapper.jar ]; then
-            echo "📥 (bootstrap) Generating Gradle wrapper via system Gradle only — project build uses ./gradlew (8.9)"
+            echo "📥 (bootstrap) Generating Gradle wrapper via system Gradle only — project build uses ./gradlew (9.1)"
             GRADLE_VERSION=$(grep "distributionUrl" gradle/wrapper/gradle-wrapper.properties | sed 's/.*gradle-\(.*\)-bin.zip/\1/')
             echo "Target Gradle version: $GRADLE_VERSION"
             gradle -q wrapper --gradle-version "$GRADLE_VERSION" --no-daemon || gradle wrapper --gradle-version "$GRADLE_VERSION" --no-daemon --stacktrace
