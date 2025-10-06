@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
  * {@link PostgresDialect} のテストクラスです。
  * 
  * @author H.Kurosawa
- * @version 0.1.0
+ * @version 0.0.1
  */
 class PostgresDialectTest {
 

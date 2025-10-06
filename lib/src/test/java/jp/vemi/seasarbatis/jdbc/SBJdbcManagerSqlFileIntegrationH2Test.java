@@ -33,7 +33,7 @@ import org.junit.jupiter.api.Test;
  * SeasarBatis が動的 SQL を生成し、H2 上で期待どおりの結果を返すことを確認します。
  * </p>
  *
- * @version 1.0.0-beta.2
+ * @version 0.0.1
  * @author VEMI
  */
 @Tag("integration")

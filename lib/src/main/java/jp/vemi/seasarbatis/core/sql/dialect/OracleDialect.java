@@ -11,7 +11,7 @@ package jp.vemi.seasarbatis.core.sql.dialect;
  * </p>
  *
  * @author H.Kurosawa
- * @version 0.1.0
+ * @version 0.0.1
  * @since 2025/10/06
  */
 public class OracleDialect implements SBDialect {

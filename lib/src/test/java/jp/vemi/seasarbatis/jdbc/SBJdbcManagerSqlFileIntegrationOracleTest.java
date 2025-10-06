@@ -29,7 +29,7 @@ import org.testcontainers.utility.DockerImageName;
  * sbtest_users テーブルを初期化し、MyBatis SQL ファイルが Oracle でも期待通り動作するかを確認します。
  * </p>
  *
- * @version 1.0.0-beta.2
+ * @version 0.0.1
  * @author VEMI
  */
 @Tag("integration")

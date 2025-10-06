@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "jp.vemi"
-version = "1.0.0-beta.2"
+version = "0.0.1"
 
 repositories { mavenCentral() }
 

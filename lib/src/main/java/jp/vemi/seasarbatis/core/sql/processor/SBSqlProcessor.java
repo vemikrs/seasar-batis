@@ -23,7 +23,7 @@ import jp.vemi.seasarbatis.core.sql.loader.SBSqlFileLoader;
  * </p>
  *
  * @author H.Kurosawa
- * @version 0.1.0
+ * @version 0.0.1
  * @since 2025/01/01
  */
 public class SBSqlProcessor {
