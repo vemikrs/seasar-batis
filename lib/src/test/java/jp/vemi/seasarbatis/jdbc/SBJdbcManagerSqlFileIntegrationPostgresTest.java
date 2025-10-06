@@ -49,7 +49,7 @@ class SBJdbcManagerSqlFileIntegrationPostgresTest {
         Assumptions.assumeTrue(DockerClientFactory.instance().isDockerAvailable(),
                 "Docker が利用できないため PostgreSQL 統合テストをスキップします。");
 
-        PostgreSQLContainer<?> container = new PostgreSQLContainer<>(DockerImageName.parse("postgres:16.2"))
+        PostgreSQLContainer<?> container = new PostgreSQLContainer<>(DockerImageName.parse("postgres:17"))
                 .withDatabaseName("sbtest")
                 .withUsername("test")
                 .withPassword("test");

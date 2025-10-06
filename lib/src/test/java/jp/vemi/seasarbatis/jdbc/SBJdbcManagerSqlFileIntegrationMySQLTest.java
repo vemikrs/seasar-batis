@@ -50,7 +50,7 @@ class SBJdbcManagerSqlFileIntegrationMySQLTest {
                 "Docker が利用できないため MySQL 統合テストをスキップします。");
 
         @SuppressWarnings("resource")
-        MySQLContainer<?> container = new MySQLContainer<>(DockerImageName.parse("mysql:8.0.36"))
+        MySQLContainer<?> container = new MySQLContainer<>(DockerImageName.parse("mysql:8.4.6"))
                 .withDatabaseName("sbtest")
                 .withUsername("test")
                 .withPassword("test")
