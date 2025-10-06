@@ -179,6 +179,22 @@
         "command": "${workspaceFolder}\\gradlew.bat",
         "options": { "shell": { "executable": "C:/Windows/System32/cmd.exe", "args": ["/d", "/c"] } }
       }
-    }
+    },
+    {
+      "label": "Integration Test: All Databases",
+      "type": "shell",
+      "command": "${workspaceFolder}/gradlew",
+      "args": ["test", "--no-daemon", "-DjunitTags=integration", "--info"],
+      "group": "test",
+      "problemMatcher": ["$gradle"],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": { "executable": "/bin/bash", "args": ["-lc"] }
+      },
+      "windows": {
+        "command": "${workspaceFolder}\\gradlew.bat",
+        "options": { "shell": { "executable": "C:/Windows/System32/cmd.exe", "args": ["/d", "/c"] } }
+      }
+    },
   ]
 }
