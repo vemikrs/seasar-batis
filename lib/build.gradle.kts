@@ -22,17 +22,17 @@ dependencies {
 
     // Database dependencies for testing.
     testImplementation("com.h2database:h2:2.3.232")
-    testImplementation("mysql:mysql-connector-java:8.0.33")
+    testImplementation("com.mysql:mysql-connector-j:8.4.0")
     testImplementation("org.postgresql:postgresql:42.7.2")
     testImplementation("com.microsoft.sqlserver:mssql-jdbc:12.6.1.jre11")
     testImplementation("com.oracle.database.jdbc:ojdbc11:23.4.0.24.05")
 
-    // TestContainers for integration testing
-    testImplementation("org.testcontainers:junit-jupiter:1.19.3")
-    testImplementation("org.testcontainers:mysql:1.19.3")
-    testImplementation("org.testcontainers:postgresql:1.19.3")
-    testImplementation("org.testcontainers:mssqlserver:1.19.3")
-    testImplementation("org.testcontainers:oracle-xe:1.19.3")
+    // Testcontainers for integration testing (align to latest stable)
+    testImplementation("org.testcontainers:junit-jupiter:1.21.3")
+    testImplementation("org.testcontainers:mysql:1.21.3")
+    testImplementation("org.testcontainers:postgresql:1.21.3")
+    testImplementation("org.testcontainers:mssqlserver:1.21.3")
+    testImplementation("org.testcontainers:oracle-xe:1.21.3")
 
     // AssertJ for fluent assertions
     testImplementation("org.assertj:assertj-core:3.24.2")
@@ -49,7 +49,7 @@ dependencies {
     implementation("org.apache.commons:commons-dbcp2:2.13.0")
 
     // Runtime only dependencies are not added to the compile classpath of projects that depend on this project.
-    runtimeOnly("mysql:mysql-connector-java:8.0.33")
+    runtimeOnly("com.mysql:mysql-connector-j:8.4.0")
 
     // Lombok for generating boilerplate code.
     compileOnly("org.projectlombok:lombok:1.18.30")
