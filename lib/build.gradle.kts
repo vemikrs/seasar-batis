@@ -82,6 +82,20 @@ tasks.named<Test>("test").configure {
     reports { html.required.set(true); junitXml.required.set(true) }
 }
 
+// 統合テスト専用タスク
+tasks.register<Test>("integrationTest") {
+    description = "Runs integration tests tagged with 'integration'"
+    group = "verification"
+    useJUnitPlatform {
+        includeTags("integration")
+    }
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = sourceSets["test"].runtimeClasspath
+    maxParallelForks = 1
+    reports { html.required.set(true); junitXml.required.set(true) }
+    shouldRunAfter(tasks.named("test"))
+}
+
 tasks.withType<Javadoc>().configureEach {
     val opts = options as? CoreJavadocOptions
     opts?.addStringOption("Xdoclint:none", "-quiet")
