@@ -3,7 +3,7 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Gradle: Build",
+      "label": "Build: Clean Build (skip tests & docs)",
       "type": "shell",
       // Use gradle wrapper with args to avoid quoting issues, force bash on Linux/WSL
       "command": "${workspaceFolder}/gradlew",
@@ -21,7 +21,7 @@
       }
     },
     {
-      "label": "Gradle: Build+Docs",
+      "label": "Build: Full Build with Docs",
       "type": "shell",
       "command": "${workspaceFolder}/gradlew",
       "args": ["clean", "build", "--no-daemon"],
@@ -37,7 +37,7 @@
       }
     },
     {
-      "label": "Gradle: Clean",
+      "label": "Build: Clean Only",
       "type": "shell",
       "command": "${workspaceFolder}/gradlew",
       "args": ["clean", "--no-daemon"],
@@ -53,7 +53,7 @@
       }
     },
     {
-      "label": "Gradle: H2 Full (local)",
+      "label": "Test: Full Check with Coverage (H2)",
       "type": "shell",
       "command": "${workspaceFolder}/gradlew",
       "args": ["clean", "check", "jacocoTestReport", "--no-daemon", "-Duser.timezone=Asia/Tokyo"],
@@ -69,7 +69,7 @@
       }
     },
     {
-      "label": "Gradle: lib:test",
+      "label": "Test: Unit Tests (lib module)",
       "type": "shell",
       "command": "${workspaceFolder}/gradlew",
       "args": [":lib:test", "--no-daemon"],
@@ -85,7 +85,7 @@
       }
     },
     {
-      "label": "Gradle: Env Smoke (local)",
+      "label": "Test: Smoke Tests",
       "type": "shell",
       "command": "${workspaceFolder}/gradlew",
       "args": ["test", "--no-daemon", "-DjunitTags=smoke"],
@@ -101,7 +101,7 @@
       }
     },
     {
-      "label": "Gradle: Integration H2",
+      "label": "Integration Test: H2",
       "type": "shell",
       "command": "${workspaceFolder}/gradlew",
       "args": ["test", "--no-daemon", "-DjunitTags=integration", "--tests", "jp.vemi.seasarbatis.jdbc.SBJdbcManagerSqlFileIntegrationH2Test", "--info"],
@@ -117,7 +117,7 @@
       }
     },
     {
-      "label": "Gradle: Integration MySQL",
+      "label": "Integration Test: MySQL",
       "type": "shell",
       "command": "${workspaceFolder}/gradlew",
       "args": ["test", "--no-daemon", "-DjunitTags=integration", "--tests", "jp.vemi.seasarbatis.jdbc.SBJdbcManagerSqlFileIntegrationMySQLTest", "--info"],
@@ -133,7 +133,7 @@
       }
     },
     {
-      "label": "Gradle: Integration Oracle",
+      "label": "Integration Test: Oracle",
       "type": "shell",
       "command": "${workspaceFolder}/gradlew",
       "args": ["test", "--no-daemon", "-DjunitTags=integration", "--tests", "jp.vemi.seasarbatis.jdbc.SBJdbcManagerSqlFileIntegrationOracleTest", "--info"],
@@ -149,7 +149,7 @@
       }
     },
     {
-      "label": "Gradle: Integration Postgres",
+      "label": "Integration Test: PostgreSQL",
       "type": "shell",
       "command": "${workspaceFolder}/gradlew",
       "args": ["test", "--no-daemon", "-DjunitTags=integration", "--tests", "jp.vemi.seasarbatis.jdbc.SBJdbcManagerSqlFileIntegrationPostgresTest", "--info"],
@@ -165,7 +165,7 @@
       }
     },
     {
-      "label": "Gradle: Integration SQLServer",
+      "label": "Integration Test: SQL Server",
       "type": "shell",
       "command": "${workspaceFolder}/gradlew",
       "args": ["test", "--no-daemon", "-DjunitTags=integration", "--tests", "jp.vemi.seasarbatis.jdbc.SBJdbcManagerSqlFileIntegrationSqlServerTest", "--info"],
