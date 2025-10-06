@@ -8,16 +8,23 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * 楽観的排他制御の設定を管理するクラスです。
+ * 楽観的排他制御の設定を管理するクラス。
  * <p>
  * エンティティごとのバージョンカラムや最終更新日時カラムの設定を管理し、
  * 自動的な楽観的排他制御の動作を制御します。
  * </p>
+ * <p>
+ * <strong>非推奨：</strong> このクラスはv0.0.2で非推奨となりました。
+ * 代わりに{@code jp.vemi.batisfluid.config.OptimisticLockConfig}を使用してください。
+ * </p>
  * 
  * @author H.Kurosawa
- * @version 1.0.0
+ * @version 0.0.2
  * @since 2025/08/23
+ * @deprecated v0.0.2以降は{@code jp.vemi.batisfluid.config.OptimisticLockConfig}を使用してください。
+ *             このクラスはv0.0.3以降で削除される予定です。
  */
+@Deprecated(since = "0.0.2")
 public class SBOptimisticLockConfig {
     
     /**

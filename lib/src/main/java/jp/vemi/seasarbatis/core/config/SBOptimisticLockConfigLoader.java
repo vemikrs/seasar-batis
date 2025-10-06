@@ -15,16 +15,23 @@ import jp.vemi.seasarbatis.core.config.SBOptimisticLockConfig.LockType;
 import jp.vemi.seasarbatis.exception.SBException;
 
 /**
- * 楽観的排他制御設定ファイルの読み込みを行うクラスです。
+ * 楽観的排他制御設定ファイルの読み込みを行うクラス。
  * <p>
  * プロパティファイルから楽観的排他制御の設定を読み込み、
  * SBOptimisticLockConfigオブジェクトを構築します。
  * </p>
+ * <p>
+ * <strong>非推奨：</strong> このクラスはv0.0.2で非推奨となりました。
+ * 代わりに{@code jp.vemi.batisfluid.config.OptimisticLockConfigLoader}を使用してください。
+ * </p>
  * 
  * @author H.Kurosawa
- * @version 1.0.0
+ * @version 0.0.2
  * @since 2025/08/23
+ * @deprecated v0.0.2以降は{@code jp.vemi.batisfluid.config.OptimisticLockConfigLoader}を使用してください。
+ *             このクラスはv0.0.3以降で削除される予定です。
  */
+@Deprecated(since = "0.0.2")
 public class SBOptimisticLockConfigLoader {
     
     private static final Logger logger = LoggerFactory.getLogger(SBOptimisticLockConfigLoader.class);

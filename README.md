@@ -1,23 +1,27 @@
-# SeasarBatis
+# BatisFluid (旧: SeasarBatis)
 
-[![Maven Central](https://maven-badges.herokuapp.com/maven-central/jp.vemi/seasar-batis/badge.svg)](https://maven-badges.herokuapp.com/maven-central/jp.vemi/seasar-batis)
-[![Javadocs](http://javadoc.io/badge/jp.vemi/seasar-batis.svg)](http://javadoc.io/doc/jp.vemi/seasar-batis)
+[![Maven Central](https://maven-badges.herokuapp.com/maven-central/jp.vemi/batis-fluid-core/badge.svg)](https://maven-badges.herokuapp.com/maven-central/jp.vemi/batis-fluid-core)
+[![Javadocs](http://javadoc.io/badge/jp.vemi/batis-fluid-core.svg)](http://javadoc.io/doc/jp.vemi/batis-fluid-core)
 
 **注意：このライブラリは現在開発中です。不具合や未開発のAPIを含む点に注意してください。**  
 
 ---
 
-SeasarBatisは、Seasar2のJdbcManagerのような操作性を提供するMyBatisのラッパーライブラリです。  
+BatisFluidは、Seasar2のJdbcManagerのような操作性を提供する、モダンでミニマルなMyBatisラッパーライブラリです。  
+fluent API、型安全性、externalized SQLサポートを提供します。
 
+> **v0.0.2の変更点**: `SeasarBatis`から`BatisFluid`にリブランドしました。  
+> 旧API（`SB*`クラス）は非推奨となり、v0.0.3以降で削除予定です。  
+> 移行ガイド: [MIGRATION_GUIDE_v0.0.1_to_v0.0.2.md](docs/v0.0.2/reference/MIGRATION_GUIDE_v0.0.1_to_v0.0.2.md)
 
 ## インストール
 
-### Maven
+### Maven (v0.0.2 - 推奨)
 ```xml
 <dependency>
     <groupId>jp.vemi</groupId>
-    <artifactId>seasar-batis</artifactId>
-    <version>1.0.0</version>
+    <artifactId>batis-fluid-core</artifactId>
+    <version>0.0.2</version>
 </dependency>
 
 <!-- 必要な依存関係 -->
@@ -28,35 +32,62 @@ SeasarBatisは、Seasar2のJdbcManagerのような操作性を提供するMyBati
 </dependency>
 ```
 
-### Gradle
+### Gradle (v0.0.2 - 推奨)
 ```groovy
 dependencies {
-    implementation 'jp.vemi:seasar-batis:1.0.0'
+    implementation 'jp.vemi:batis-fluid-core:0.0.2'
     
     // 必要な依存関係
     implementation 'org.mybatis:mybatis:3.5.15'
 }
 ```
 
+### Maven (v0.0.1 - 非推奨)
+```xml
+<dependency>
+    <groupId>jp.vemi</groupId>
+    <artifactId>seasar-batis</artifactId>
+    <version>0.0.1</version>
+</dependency>
+```
+
+### Gradle (v0.0.1 - 非推奨)
+```groovy
+dependencies {
+    implementation 'jp.vemi:seasar-batis:0.0.1'
+}
+```
+
 ### スタンドアロンでの使用
 
+#### v0.0.2 (推奨)
 ```java
 SqlSessionFactory sqlSessionFactory = new SqlSessionFactoryBuilder()
     .build(Resources.getResourceAsStream("mybatis-config.xml"));
-SBJdbcManager jdbcManager = new SBJdbcManager(sqlSessionFactory);
+
+// BatisFluidを使用
+BatisFluid fluid = BatisFluid.of(sqlSessionFactory);
+JdbcFlow flow = fluid.jdbcFlow();
+```
+
+#### v0.0.1 (非推奨)
+```java
+SqlSessionFactory sqlSessionFactory = new SqlSessionFactoryBuilder()
+    .build(Resources.getResourceAsStream("mybatis-config.xml"));
+SBJdbcManager jdbcManager = new SBJdbcManager(sqlSessionFactory); // 非推奨
 ```
 
 ## Spring Framework との統合
 
 Spring Frameworkと統合する場合は、以下の追加依存関係が必要です。
 
-### Maven
+### Maven (v0.0.2 - 推奨)
 ```xml
-<!-- SeasarBatis Spring統合モジュール -->
+<!-- BatisFluid Spring統合モジュール -->
 <dependency>
     <groupId>jp.vemi</groupId>
-    <artifactId>seasar-batis-spring</artifactId>
-    <version>1.0.0</version>
+    <artifactId>batis-fluid-spring</artifactId>
+    <version>0.0.2</version>
 </dependency>
 
 <!-- Spring統合用の追加依存関係 -->
@@ -72,14 +103,30 @@ Spring Frameworkと統合する場合は、以下の追加依存関係が必要�
 </dependency>
 ```
 
-### Gradle
+### Gradle (v0.0.2 - 推奨)
 ```groovy
-// SeasarBatis Spring統合モジュール
-implementation 'jp.vemi:seasar-batis-spring:1.0.0'
+// BatisFluid Spring統合モジュール
+implementation 'jp.vemi:batis-fluid-spring:0.0.2'
 
 // Spring統合用の追加依存関係
 implementation 'org.mybatis:mybatis-spring:3.0.3'
 implementation 'org.springframework:spring-jdbc:6.1.3'
+```
+
+### Maven (v0.0.1 - 非推奨)
+```xml
+<!-- SeasarBatis Spring統合モジュール -->
+<dependency>
+    <groupId>jp.vemi</groupId>
+    <artifactId>seasar-batis-spring</artifactId>
+    <version>0.0.1</version>
+</dependency>
+```
+
+### Gradle (v0.0.1 - 非推奨)
+```groovy
+// SeasarBatis Spring統合モジュール
+implementation 'jp.vemi:seasar-batis-spring:0.0.1'
 ```
 
 ### Spring Boot での設定
@@ -351,12 +398,31 @@ throw new SBTransactionException("transaction.error.execution");
 
 ## 楽観的排他制御（Optimistic Locking）
 
-SeasarBatis は、バージョンカラムまたは最終更新日時カラムに基づく楽観的排他制御をサポートします。更新時に自動で条件を付与し、競合が検出された場合は `SBOptimisticLockException` をスローします。詳細は `OPTIMISTIC_LOCKING.md` を参照してください。
+BatisFluid は、バージョンカラムまたは最終更新日時カラムに基づく楽観的排他制御をサポートします。更新時に自動で条件を付与し、競合が検出された場合は例外をスローします。詳細は `OPTIMISTIC_LOCKING.md` を参照してください。
 
-### 使い方（エンティティ注釈）
-
+### 使い方（エンティティ注釈） - v0.0.2
 ```java
-@SBTableMeta(name = "users")
+@FluidTable(name = "users")  // v0.0.2の新アノテーション
+public class User {
+    @FluidColumn(name = "id", primaryKey = true)
+    private Long id;
+
+    @FluidColumn(name = "name")
+    private String name;
+
+    // バージョン方式
+    @FluidColumn(name = "version", versionColumn = true)
+    private Long version;
+
+    // または、最終更新日時方式
+    // @FluidColumn(name = "updated_at", lastModifiedColumn = true)
+    // private LocalDateTime updatedAt;
+}
+```
+
+### 使い方（エンティティ注釈） - v0.0.1 (非推奨)
+```java
+@SBTableMeta(name = "users")  // v0.0.2で非推奨
 public class User {
     @SBColumnMeta(name = "id", primaryKey = true)
     private Long id;
@@ -364,19 +430,31 @@ public class User {
     @SBColumnMeta(name = "name")
     private String name;
 
-    // バージョン方式
     @SBColumnMeta(name = "version", versionColumn = true)
     private Long version;
-
-    // または、最終更新日時方式
-    // @SBColumnMeta(name = "updated_at", lastModifiedColumn = true)
-    // private LocalDateTime updatedAt;
 }
 ```
 
 ### 設定ファイル
 
-`src/main/resources/seasarbatis-optimistic-lock.properties`（デフォルト名）で制御方式を上書きできます。
+#### v0.0.2 (推奨)
+`src/main/resources/batisfluid-optimistic-lock.properties` で制御方式を上書きできます。
+
+```properties
+batisfluid.optimistic-lock.enabled=true
+batisfluid.optimistic-lock.default-type=NONE
+
+# エンティティごとの上書き
+batisfluid.optimistic-lock.entity.com.example.User.type=VERSION
+batisfluid.optimistic-lock.entity.com.example.User.column=version
+
+batisfluid.optimistic-lock.entity.com.example.Order.type=LAST_MODIFIED
+batisfluid.optimistic-lock.entity.com.example.Order.column=updated_at
+```
+
+#### v0.0.1 (非推奨、ただしv0.0.2でも互換性維持)
+`src/main/resources/seasarbatis-optimistic-lock.properties` も引き続きサポートされますが、
+将来のバージョンでは削除されます。
 
 ```properties
 seasarbatis.optimistic-lock.enabled=true
