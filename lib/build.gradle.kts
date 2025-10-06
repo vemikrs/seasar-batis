@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "jp.vemi"
-version = "0.0.1"
+version = "0.0.2"
 
 repositories { mavenCentral() }
 
@@ -75,7 +75,8 @@ tasks.named<Test>("test").configure {
             val tags = prop.split(',').map { it.trim() }.filter { it.isNotEmpty() }
             if (tags.isNotEmpty()) includeTags(*tags.toTypedArray())
         } else {
-            excludeTags("integration")
+            // デフォルトではintegrationとv0.0.1テストを除外
+            excludeTags("integration", "v0.0.1")
         }
     }
     maxParallelForks = 1
@@ -110,10 +111,10 @@ tasks.named<JacocoReport>("jacocoTestReport").configure {
 mavenPublishing {
     publishToMavenCentral(com.vanniktech.maven.publish.SonatypeHost.CENTRAL_PORTAL)
     signAllPublications()
-    coordinates("jp.vemi", "seasar-batis", version.toString())
+    coordinates("jp.vemi", "batis-fluid-core", version.toString())
     pom {
-        name.set("SeasarBatis")
-        description.set("Seasar2-like MyBatis wrapper library that provides JdbcManager-like operations")
+        name.set("BatisFluid Core")
+        description.set("Modern, minimal, pluggable MyBatis wrapper with fluent API and externalized SQL support")
         url.set("https://github.com/vemikrs/seasar-batis")
         licenses {
             license {

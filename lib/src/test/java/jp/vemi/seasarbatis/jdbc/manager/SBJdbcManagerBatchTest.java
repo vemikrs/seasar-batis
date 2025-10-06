@@ -20,6 +20,7 @@ import java.util.List;
 
 import org.apache.ibatis.session.SqlSession;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -30,11 +31,16 @@ import jp.vemi.seasarbatis.jdbc.SBJdbcManagerFactory;
 import jp.vemi.seasarbatis.test.entity.TestSbUser;
 
 /**
- * SBJdbcManagerのバッチ処理機能のテストクラスです。
+ * SBJdbcManagerのバッチ処理機能のテストクラス（v0.0.1互換性テスト）。
+ * <p>
+ * このテストは旧API（SB*クラス）の互換性を確認するためのものです。
+ * v0.0.2以降は新API（BatisFluid, JdbcFlow等）の使用を推奨します。
+ * </p>
  * 
  * @author H.Kurosawa
- * @version 1.0.0
+ * @version 0.0.2
  */
+@Tag("v0.0.1")
 @ExtendWith(MockitoExtension.class)
 class SBJdbcManagerBatchTest {
 

@@ -14,8 +14,18 @@ import jp.vemi.seasarbatis.core.query.SBSelect;
 import jp.vemi.seasarbatis.jdbc.SBJdbcManager;
 
 /**
- * SpringJdbcManager.
+ * SpringのトランザクションマネージャーとSeasarBatisを統合するクラス。
+ * <p>
+ * <strong>非推奨：</strong> このクラスはv0.0.2で非推奨となりました。
+ * 代わりに{@code jp.vemi.batisfluid.spring.core.SpringJdbcFlow}を使用してください。
+ * </p>
+ *
+ * @author H.Kurosawa
+ * @version 0.0.2
+ * @deprecated v0.0.2以降は{@code jp.vemi.batisfluid.spring.core.SpringJdbcFlow}を使用してください。
+ *             このクラスはv0.0.3以降で削除される予定です。
  */
+@Deprecated(since = "0.0.2")
 @Component
 public class SpringJdbcManager extends SBJdbcManager {
 

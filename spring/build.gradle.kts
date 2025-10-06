@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "jp.vemi"
-version = "0.0.1"
+version = "0.0.2"
 
 sourceSets {
     named("main") {
@@ -67,10 +67,10 @@ tasks.withType<Javadoc>().configureEach {
 mavenPublishing {
     publishToMavenCentral(com.vanniktech.maven.publish.SonatypeHost.CENTRAL_PORTAL)
     signAllPublications()
-    coordinates("jp.vemi", "seasar-batis-spring", version.toString())
+    coordinates("jp.vemi", "batis-fluid-spring", version.toString())
     pom {
-        name.set("SeasarBatis Spring Integration")
-        description.set("Spring Framework integration module for SeasarBatis")
+        name.set("BatisFluid Spring Integration")
+        description.set("Spring Framework integration module for BatisFluid")
         url.set("https://github.com/vemikrs/seasar-batis")
         licenses {
             license {
@@ -95,5 +95,10 @@ mavenPublishing {
 
 // Duplicate resources handling (Gradle 9 requires explicit strategy on duplicates)
 tasks.named<org.gradle.language.jvm.tasks.ProcessResources>("processResources").configure {
+    duplicatesStrategy = org.gradle.api.file.DuplicatesStrategy.EXCLUDE
+}
+
+// Configure sourcesJar task to handle duplicates
+tasks.named<org.gradle.jvm.tasks.Jar>("sourcesJar").configure {
     duplicatesStrategy = org.gradle.api.file.DuplicatesStrategy.EXCLUDE
 }

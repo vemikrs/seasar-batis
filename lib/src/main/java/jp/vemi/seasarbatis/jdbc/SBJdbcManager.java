@@ -51,11 +51,26 @@ import jp.vemi.seasarbatis.exception.SBOptimisticLockException;
  * <p>
  * 本クラスは、MyBatisのSqlSessionを使用してデータベース操作を提供します。
  * </p>
+ * <p>
+ * <strong>非推奨：</strong> このクラスはv0.0.2で非推奨となりました。
+ * 代わりに{@code jp.vemi.batisfluid.core.JdbcFlow}を使用してください。
+ * </p>
+ * <pre>{@code
+ * // 旧方式（非推奨）
+ * SBJdbcManager manager = new SBJdbcManager(sqlSessionFactory);
+ * 
+ * // 新方式（推奨）
+ * BatisFluid fluid = BatisFluid.of(sqlSessionFactory);
+ * JdbcFlow flow = fluid.jdbcFlow();
+ * }</pre>
  *
  * @author H.Kurosawa
- * @version 1.0.0
+ * @version 0.0.2
  * @since 2025/01/01
+ * @deprecated v0.0.2以降は{@code jp.vemi.batisfluid.core.JdbcFlow}を使用してください。
+ *             このクラスはv0.0.3以降で削除される予定です。
  */
+@Deprecated(since = "0.0.2")
 public class SBJdbcManager {
     private static final Logger logger = LoggerFactory.getLogger(SBJdbcManager.class);
 
