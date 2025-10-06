@@ -20,9 +20,11 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.DockerClientFactory;
 import org.testcontainers.containers.MySQLContainer;
+import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.utility.DockerImageName;
 
 import com.mysql.cj.jdbc.MysqlDataSource;
+import java.time.Duration;
 
 /**
  * MySQL(Testcontainers) 上で SQL ファイル経由のクエリを検証する統合テストです。
@@ -30,7 +32,7 @@ import com.mysql.cj.jdbc.MysqlDataSource;
  * Docker が利用できる環境に限定して実データベースとの整合性を確認します。
  * </p>
  *
- * @version 1.0.0-beta.2
+ * @version 0.0.1
  * @author VEMI
  */
 @Tag("integration")
@@ -49,12 +51,23 @@ class SBJdbcManagerSqlFileIntegrationMySQLTest {
         Assumptions.assumeTrue(DockerClientFactory.instance().isDockerAvailable(),
                 "Docker が利用できないため MySQL 統合テストをスキップします。");
 
-        @SuppressWarnings("resource")
-        MySQLContainer<?> container = new MySQLContainer<>(DockerImageName.parse("mysql:8.0.36"))
-                .withDatabaseName("sbtest")
-                .withUsername("test")
-                .withPassword("test")
-                .withInitScript("ddl/mysql_init.sql");
+        MySQLContainer<?> container = new MySQLContainer<>(DockerImageName.parse("mysql:8.4.6"));
+        container.withDatabaseName("sbtest")
+            .withUsername("test")
+            .withPassword("test")
+            // root アクセスの制限で初期化が詰まるのを避ける
+            .withEnv("MYSQL_ROOT_HOST", "%")
+            // 互換性重視のためパスワードプラグインを明示（必要に応じて外せます）
+            .withEnv("MYSQL_ROOT_PASSWORD", "test")
+            // MySQL 8.4 では --skip-host-cache が削除されたため、conf をオーバーライドして回避
+            .withConfigurationOverride("mysql-8_4-conf")
+            // 一時サーバ (port:0) ではなく、実サーバ (port:3306) の起動完了を待つ
+            .waitingFor(
+                Wait.forLogMessage(".*mysqld: ready for connections.*port: 3306.*", 1)
+                .withStartupTimeout(Duration.ofMinutes(5)))
+            .withStartupTimeout(Duration.ofMinutes(5))
+            .withInitScript("ddl/mysql_init.sql");
+        
         try {
             container.start();
             mysqlContainer = container;

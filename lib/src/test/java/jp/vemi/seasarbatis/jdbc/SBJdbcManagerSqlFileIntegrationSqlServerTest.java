@@ -29,7 +29,7 @@ import org.testcontainers.utility.DockerImageName;
  * sbtest_users テーブルを T-SQL で初期化し、MyBatis 経由の実行結果を確認します。
  * </p>
  *
- * @version 1.0.0-beta.2
+ * @version 0.0.1
  * @author VEMI
  */
 @Tag("integration")

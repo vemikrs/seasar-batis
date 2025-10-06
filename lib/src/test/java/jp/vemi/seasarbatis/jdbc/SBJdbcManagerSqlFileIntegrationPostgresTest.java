@@ -29,7 +29,7 @@ import org.testcontainers.utility.DockerImageName;
  * Docker 環境が有効な場合に sbtest_users テーブルの初期化とクエリ検証を実施します。
  * </p>
  *
- * @version 1.0.0-beta.2
+ * @version 0.0.1
  * @author VEMI
  */
 @Tag("integration")
@@ -49,7 +49,7 @@ class SBJdbcManagerSqlFileIntegrationPostgresTest {
         Assumptions.assumeTrue(DockerClientFactory.instance().isDockerAvailable(),
                 "Docker が利用できないため PostgreSQL 統合テストをスキップします。");
 
-        PostgreSQLContainer<?> container = new PostgreSQLContainer<>(DockerImageName.parse("postgres:16.2"))
+        PostgreSQLContainer<?> container = new PostgreSQLContainer<>(DockerImageName.parse("postgres:17"))
                 .withDatabaseName("sbtest")
                 .withUsername("test")
                 .withPassword("test");
