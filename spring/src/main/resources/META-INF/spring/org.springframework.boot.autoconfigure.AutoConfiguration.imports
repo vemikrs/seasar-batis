@@ -1,1 +1,2 @@
 jp.vemi.seasarbatis.spring.config.SeasarBatisAutoConfiguration
+jp.vemi.batisfluid.spring.config.BatisFluidAutoConfiguration
