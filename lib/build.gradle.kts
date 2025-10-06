@@ -75,7 +75,8 @@ tasks.named<Test>("test").configure {
             val tags = prop.split(',').map { it.trim() }.filter { it.isNotEmpty() }
             if (tags.isNotEmpty()) includeTags(*tags.toTypedArray())
         } else {
-            excludeTags("integration")
+            // デフォルトではintegrationとv0.0.1テストを除外
+            excludeTags("integration", "v0.0.1")
         }
     }
     maxParallelForks = 1
