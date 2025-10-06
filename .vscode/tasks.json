@@ -104,7 +104,7 @@
       "label": "Gradle: Integration H2",
       "type": "shell",
       "command": "${workspaceFolder}/gradlew",
-      "args": ["test", "--no-daemon", "-DjunitTags=integration", "--tests", "jp.vemi.seasarbatis.jdbc.SBJdbcManagerSqlFileIntegrationH2Test"],
+      "args": ["test", "--no-daemon", "-DjunitTags=integration", "--tests", "jp.vemi.seasarbatis.jdbc.SBJdbcManagerSqlFileIntegrationH2Test", "--info"],
   "group": "test",
       "problemMatcher": ["$gradle"],
       "options": {
@@ -120,7 +120,7 @@
       "label": "Gradle: Integration MySQL",
       "type": "shell",
       "command": "${workspaceFolder}/gradlew",
-      "args": ["test", "--no-daemon", "-DjunitTags=integration", "--tests", "jp.vemi.seasarbatis.jdbc.SBJdbcManagerSqlFileIntegrationMySQLTest"],
+      "args": ["test", "--no-daemon", "-DjunitTags=integration", "--tests", "jp.vemi.seasarbatis.jdbc.SBJdbcManagerSqlFileIntegrationMySQLTest", "--info"],
   "group": "test",
       "problemMatcher": ["$gradle"],
       "options": {
@@ -136,7 +136,7 @@
       "label": "Gradle: Integration Oracle",
       "type": "shell",
       "command": "${workspaceFolder}/gradlew",
-      "args": ["test", "--no-daemon", "-DjunitTags=integration", "--tests", "jp.vemi.seasarbatis.jdbc.SBJdbcManagerSqlFileIntegrationOracleTest"],
+      "args": ["test", "--no-daemon", "-DjunitTags=integration", "--tests", "jp.vemi.seasarbatis.jdbc.SBJdbcManagerSqlFileIntegrationOracleTest", "--info"],
   "group": "test",
       "problemMatcher": ["$gradle"],
       "options": {
@@ -152,7 +152,7 @@
       "label": "Gradle: Integration Postgres",
       "type": "shell",
       "command": "${workspaceFolder}/gradlew",
-      "args": ["test", "--no-daemon", "-DjunitTags=integration", "--tests", "jp.vemi.seasarbatis.jdbc.SBJdbcManagerSqlFileIntegrationPostgresTest"],
+      "args": ["test", "--no-daemon", "-DjunitTags=integration", "--tests", "jp.vemi.seasarbatis.jdbc.SBJdbcManagerSqlFileIntegrationPostgresTest", "--info"],
   "group": "test",
       "problemMatcher": ["$gradle"],
       "options": {
@@ -168,7 +168,7 @@
       "label": "Gradle: Integration SQLServer",
       "type": "shell",
       "command": "${workspaceFolder}/gradlew",
-      "args": ["test", "--no-daemon", "-DjunitTags=integration", "--tests", "jp.vemi.seasarbatis.jdbc.SBJdbcManagerSqlFileIntegrationSqlServerTest"],
+      "args": ["test", "--no-daemon", "-DjunitTags=integration", "--tests", "jp.vemi.seasarbatis.jdbc.SBJdbcManagerSqlFileIntegrationSqlServerTest", "--info"],
       "group": "test",
       "problemMatcher": ["$gradle"],
       "options": {
