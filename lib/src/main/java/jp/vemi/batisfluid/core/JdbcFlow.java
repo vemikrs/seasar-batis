@@ -6,6 +6,8 @@ package jp.vemi.batisfluid.core;
 import org.apache.ibatis.session.SqlSessionFactory;
 
 import jp.vemi.batisfluid.config.OptimisticLockConfig;
+import jp.vemi.seasarbatis.core.builder.SBSelectBuilder;
+import jp.vemi.seasarbatis.core.query.SBSelect;
 import jp.vemi.seasarbatis.jdbc.SBJdbcManager;
 
 /**
@@ -42,8 +44,34 @@ public class JdbcFlow {
         // OptimisticLockConfigは新クラスなので、旧クラスに変換が必要
         jp.vemi.seasarbatis.core.config.SBOptimisticLockConfig oldConfig = 
             new jp.vemi.seasarbatis.core.config.SBOptimisticLockConfig();
-        // 設定をコピー（後で実装）
+        
+        // 基本設定をコピー
+        oldConfig.setEnabled(optimisticLockConfig.isEnabled());
+        oldConfig.setDefaultLockType(convertLockType(optimisticLockConfig.getDefaultLockType()));
+        
+        // エンティティ固有の設定をコピー（現時点では未実装）
+        // TODO: エンティティごとの設定を取得できるAPIが必要
+        
         this.delegate = new SBJdbcManager(sqlSessionFactory, oldConfig);
+    }
+    
+    /**
+     * LockTypeを旧型に変換します。
+     *
+     * @param newLockType 新しいLockType
+     * @return 旧LockType
+     */
+    private static jp.vemi.seasarbatis.core.config.SBOptimisticLockConfig.LockType convertLockType(
+            OptimisticLockConfig.LockType newLockType) {
+        switch (newLockType) {
+            case VERSION:
+                return jp.vemi.seasarbatis.core.config.SBOptimisticLockConfig.LockType.VERSION;
+            case LAST_MODIFIED:
+                return jp.vemi.seasarbatis.core.config.SBOptimisticLockConfig.LockType.LAST_MODIFIED;
+            case NONE:
+            default:
+                return jp.vemi.seasarbatis.core.config.SBOptimisticLockConfig.LockType.NONE;
+        }
     }
     
     /**
@@ -60,4 +88,127 @@ public class JdbcFlow {
     
     // 以下、主要なメソッドをデリゲート
     // TODO: 将来的には直接実装に置き換える
+    
+    /**
+     * SELECT操作を開始します。
+     * <p>
+     * 型安全なクエリビルダーを返します。
+     * </p>
+     *
+     * @param <T> エンティティの型
+     * @param entityClass エンティティクラス
+     * @return SELECT操作ビルダー
+     */
+    public <T> SBSelectBuilder<T> from(Class<T> entityClass) {
+        return delegate.from(entityClass);
+    }
+    
+    /**
+     * エンティティをINSERTします。
+     *
+     * @param <T> エンティティの型
+     * @param entity 挿入するエンティティ
+     * @return 挿入後のエンティティ（自動生成キーが設定される）
+     */
+    public <T> T insert(T entity) {
+        return delegate.insert(entity);
+    }
+    
+    /**
+     * エンティティをINSERTします。
+     *
+     * @param <T> エンティティの型
+     * @param entity 挿入するエンティティ
+     * @param isIndependentTransaction 独立したトランザクションで実行するかどうか
+     * @return 挿入後のエンティティ（自動生成キーが設定される）
+     */
+    public <T> T insert(T entity, boolean isIndependentTransaction) {
+        return delegate.insert(entity, isIndependentTransaction);
+    }
+    
+    /**
+     * エンティティをUPDATEします。
+     *
+     * @param <T> エンティティの型
+     * @param entity 更新するエンティティ
+     * @return 更新後のエンティティ
+     */
+    public <T> T update(T entity) {
+        return delegate.update(entity);
+    }
+    
+    /**
+     * エンティティをUPDATEします。
+     *
+     * @param <T> エンティティの型
+     * @param entity 更新するエンティティ
+     * @param isIndependentTransaction 独立したトランザクションで実行するかどうか
+     * @return 更新後のエンティティ
+     */
+    public <T> T update(T entity, boolean isIndependentTransaction) {
+        return delegate.update(entity, isIndependentTransaction);
+    }
+    
+    /**
+     * エンティティをDELETEします。
+     *
+     * @param <T> エンティティの型
+     * @param entity 削除するエンティティ
+     * @return 削除された件数
+     */
+    public <T> int delete(T entity) {
+        return delegate.delete(entity);
+    }
+    
+    /**
+     * エンティティをDELETEします。
+     *
+     * @param <T> エンティティの型
+     * @param entity 削除するエンティティ
+     * @param isIndependentTransaction 独立したトランザクションで実行するかどうか
+     * @return 削除された件数
+     */
+    public <T> int delete(T entity, boolean isIndependentTransaction) {
+        return delegate.delete(entity, isIndependentTransaction);
+    }
+    
+    /**
+     * エンティティを主キーで検索します。
+     *
+     * @param <T> エンティティの型
+     * @param entity 検索条件となるエンティティ（主キーが設定されている必要がある）
+     * @return SELECT操作ビルダー
+     */
+    public <T> SBSelect<T> findByPk(T entity) {
+        return delegate.findByPk(entity);
+    }
+    
+    /**
+     * エンティティをINSERT or UPDATEします。
+     * <p>
+     * 主キーが存在する場合はUPDATE、存在しない場合はINSERTを実行します。
+     * </p>
+     *
+     * @param <T> エンティティの型
+     * @param entity 挿入または更新するエンティティ
+     * @return 挿入または更新後のエンティティ
+     */
+    public <T> T insertOrUpdate(T entity) {
+        return delegate.insertOrUpdate(entity);
+    }
+    
+    /**
+     * エンティティをINSERT or UPDATEします。
+     * <p>
+     * 主キーが存在する場合はUPDATE、存在しない場合はINSERTを実行します。
+     * </p>
+     *
+     * @param <T> エンティティの型
+     * @param entity 挿入または更新するエンティティ
+     * @param isIndependentTransaction 独立したトランザクションで実行するかどうか
+     * @return 挿入または更新後のエンティティ
+     */
+    public <T> T insertOrUpdate(T entity, boolean isIndependentTransaction) {
+        return delegate.insertOrUpdate(entity, isIndependentTransaction);
+    }
 }
