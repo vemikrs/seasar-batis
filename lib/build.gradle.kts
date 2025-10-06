@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "jp.vemi"
-version = "0.0.1"
+version = "0.0.2"
 
 repositories { mavenCentral() }
 
@@ -110,10 +110,10 @@ tasks.named<JacocoReport>("jacocoTestReport").configure {
 mavenPublishing {
     publishToMavenCentral(com.vanniktech.maven.publish.SonatypeHost.CENTRAL_PORTAL)
     signAllPublications()
-    coordinates("jp.vemi", "seasar-batis", version.toString())
+    coordinates("jp.vemi", "batis-fluid-core", version.toString())
     pom {
-        name.set("SeasarBatis")
-        description.set("Seasar2-like MyBatis wrapper library that provides JdbcManager-like operations")
+        name.set("BatisFluid Core")
+        description.set("Modern, minimal, pluggable MyBatis wrapper with fluent API and externalized SQL support")
         url.set("https://github.com/vemikrs/seasar-batis")
         licenses {
             license {
