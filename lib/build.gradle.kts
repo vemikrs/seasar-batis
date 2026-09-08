@@ -3,7 +3,7 @@ plugins {
     id("java-library")
     id("com.vanniktech.maven.publish")
     id("jacoco")
-    id("com.github.ben-manes.versions") version "0.54.0"
+    id("com.github.ben-manes.versions") version "0.61.0"
 }
 
 import com.vanniktech.maven.publish.JavaLibrary
@@ -17,20 +17,20 @@ repositories { mavenCentral() }
 
 dependencies {
     // Use JUnit Jupiter for testing.
-    testImplementation("org.junit.jupiter:junit-jupiter-api:6.1.2")
+    testImplementation("org.junit.jupiter:junit-jupiter-api:6.1.3")
     testImplementation("org.mockito:mockito-junit-jupiter:5.23.0")
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:6.1.2")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher:6.1.2")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:6.1.3")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher:6.1.3")
 
     // Mockito for mocking in tests.
     testImplementation("org.mockito:mockito-core:5.23.0")
 
     // Database dependencies for testing.
-    testImplementation("com.h2database:h2:2.4.240")
+    testImplementation("com.h2database:h2:2.5.250")
     testImplementation("com.mysql:mysql-connector-j:9.7.0")
     testImplementation("org.postgresql:postgresql:42.7.13")
     testImplementation("com.microsoft.sqlserver:mssql-jdbc:13.4.0.jre11")
-    testImplementation("com.oracle.database.jdbc:ojdbc11:23.26.2.0.0")
+    testImplementation("com.oracle.database.jdbc:ojdbc11:23.26.3.0.0")
 
     // Testcontainers for integration testing (align to latest stable)
     testImplementation("org.testcontainers:testcontainers-junit-jupiter:2.0.5")
@@ -50,21 +50,21 @@ dependencies {
     implementation("org.mybatis.generator:mybatis-generator-core:2.0.0")
     implementation("org.apache.commons:commons-math3:3.6.1")
     implementation("org.apache.commons:commons-lang3:3.20.0")
-    implementation("com.google.guava:guava:33.6.0-jre")
+    implementation("com.google.guava:guava:33.7.1-jre")
     implementation("org.apache.commons:commons-dbcp2:2.14.0")
 
     // Runtime only dependencies are not added to the compile classpath of projects that depend on this project.
     runtimeOnly("com.mysql:mysql-connector-j:9.7.0")
 
     // Lombok for generating boilerplate code.
-    compileOnly("org.projectlombok:lombok:1.18.46")
-    annotationProcessor("org.projectlombok:lombok:1.18.46")
-    testCompileOnly("org.projectlombok:lombok:1.18.46")
-    testAnnotationProcessor("org.projectlombok:lombok:1.18.46")
+    compileOnly("org.projectlombok:lombok:1.18.48")
+    annotationProcessor("org.projectlombok:lombok:1.18.48")
+    testCompileOnly("org.projectlombok:lombok:1.18.48")
+    testAnnotationProcessor("org.projectlombok:lombok:1.18.48")
 
     // SLF4J for logging
-    implementation("org.slf4j:slf4j-api:2.0.18")
-    implementation("ch.qos.logback:logback-classic:1.5.38")
+    implementation("org.slf4j:slf4j-api:2.0.19")
+    implementation("ch.qos.logback:logback-classic:1.6.3")
 }
 
 java {
